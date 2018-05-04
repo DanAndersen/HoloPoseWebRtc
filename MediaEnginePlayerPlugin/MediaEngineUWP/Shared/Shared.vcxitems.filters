@@ -27,8 +27,19 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)Unity\PlatformBase.h">
       <Filter>Unity</Filter>
     </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)d3dmanagerlock.hxx" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)MediaEngine.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)MediaEnginePlayer.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)MediaHelpers.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)targetver.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="$(MSBuildThisFileDirectory)..\MediaEngineUWP\MediaPlayback.def" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="$(MSBuildThisFileDirectory)dllmain.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)MediaEngine.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)MediaEnginePlayer.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)MediaHelpers.cpp" />
   </ItemGroup>
 </Project>
