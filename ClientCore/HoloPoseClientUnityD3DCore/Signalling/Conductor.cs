@@ -25,6 +25,7 @@ using Windows.UI.Core;
 using Windows.UI.Xaml.Controls;
 using Windows.Foundation;
 using Windows.Media.Core;
+using HoloPoseClientCore.Signalling;
 #if ORTCLIB
 using Org.Ortc;
 using Org.Ortc.Adapter;
