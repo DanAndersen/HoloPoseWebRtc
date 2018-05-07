@@ -27,6 +27,7 @@ namespace HoloPoseClientCore.Signalling
         /// <param name="client_name">Client name.</param>
         public override async void Connect(string server, string port, string client_name)
         {
+            Debug.WriteLine("PeerConnectionServerSignaller: Connect " + server + " " + port + " " + client_name);
             try
             {
                 if (_state != State.NOT_CONNECTED)

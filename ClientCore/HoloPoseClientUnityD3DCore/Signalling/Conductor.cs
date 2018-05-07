@@ -943,7 +943,8 @@ namespace HoloPoseClient.Signalling
 //#else
             //_signalingMode = RTCPeerConnectionSignalingMode.Sdp;
 #endif
-            _signaller = new Signaller();
+            //_signaller = new Signaller();
+            _signaller = new PeerConnectionServerSignaller();
             _media = Media.CreateMedia();
 
             Signaller.OnDisconnected += Signaller_OnDisconnected;

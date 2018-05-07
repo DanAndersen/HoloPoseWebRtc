@@ -336,7 +336,8 @@ namespace SympleRtcCore
                     if (videoTracks.Count > 0)
                     {
                         //var source = GetMedia().CreateMediaSource(videoTracks[0], Symple.LocalMediaStreamId); // was valid for org.webrtc 1.54, not existing anymore
-                        var source = GetMedia().CreateMediaStreamSource(Symple.LocalMediaStreamId);
+                        //var source = GetMedia().CreateMediaStreamSource(Symple.LocalMediaStreamId);
+                        var source = GetMedia().CreateMediaStreamSource(videoTracks[0], "I420", Symple.LocalMediaStreamId);
 
                         Messenger.Broadcast(SympleLog.CreatedMediaSource, source);
 
