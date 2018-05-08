@@ -52,8 +52,6 @@ namespace HoloPoseClientCore.Signalling
         };
         protected State _state;
 
-        protected HostName _server;
-        protected string _port;
         protected string _clientName;
         protected int _myId;
         protected Dictionary<int, string> _peers = new Dictionary<int, string>();

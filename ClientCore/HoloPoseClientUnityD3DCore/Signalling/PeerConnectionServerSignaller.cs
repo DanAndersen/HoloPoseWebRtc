@@ -18,6 +18,8 @@ namespace HoloPoseClientCore.Signalling
     public class PeerConnectionServerSignaller : Signaller
     {
         private StreamSocket _hangingGetSocket;
+        protected HostName _server;
+        protected string _port;
 
         /// <summary>
         /// Connects to the server.
