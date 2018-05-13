@@ -20,6 +20,39 @@ namespace HoloPoseClientCore.Signalling
         private StreamSocket _hangingGetSocket;
         protected HostName _server;
         protected string _port;
+        
+        /// <summary>
+        /// The connection state.
+        /// </summary>
+        public enum State
+        {
+            NOT_CONNECTED,
+            RESOLVING, // Note: State not used
+            SIGNING_IN,
+            CONNECTED,
+            SIGNING_OUT_WAITING, // Note: State not used
+            SIGNING_OUT,
+        };
+        protected State _state;
+
+        protected string _clientName;
+        protected int _myId;
+        protected Dictionary<int, string> _peers = new Dictionary<int, string>();
+
+        public PeerConnectionServerSignaller() : base()
+        {
+            _state = State.NOT_CONNECTED;
+            _myId = -1;
+        }
+
+        /// <summary>
+        /// Checks if connected to the server.
+        /// </summary>
+        /// <returns>True if connected to the server.</returns>
+        public override bool IsConnected()
+        {
+            return _myId != -1;
+        }
 
         /// <summary>
         /// Connects to the server.

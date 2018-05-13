@@ -791,6 +791,21 @@ namespace PeerConnectionClient.ViewModels
             }
         }
 
+        private ValidableNonEmptyString _clientName;
+
+        /// <summary>
+        /// Client name to connect as.
+        /// </summary>
+        public ValidableNonEmptyString ClientName
+        {
+            get { return _clientName; }
+            set
+            {
+                SetProperty(ref _clientName, value);
+                _clientName.PropertyChanged += ClientName_PropertyChanged;
+            }
+        }
+
         private ObservableCollection<Peer> _peers;
 
         /// <summary>
@@ -1853,7 +1868,7 @@ namespace PeerConnectionClient.ViewModels
         /// </summary>
         private void ReevaluateHasServer()
         {
-            HasServer = Ip != null && Ip.Valid && Port != null && Port.Valid;
+            HasServer = Ip != null && Ip.Valid && Port != null && Port.Valid && ClientName != null && ClientName.Valid;
         }
 
         /// <summary>
@@ -1863,7 +1878,7 @@ namespace PeerConnectionClient.ViewModels
         /// <returns>True if the application is ready to connect to server.</returns>
         private bool ConnectCommandCanExecute(object obj)
         {
-            return !IsConnected && !IsConnecting && Ip.Valid && Port.Valid;
+            return !IsConnected && !IsConnecting && Ip.Valid && Port.Valid && ClientName.Valid;
         }
 
         /// <summary>
@@ -1875,7 +1890,7 @@ namespace PeerConnectionClient.ViewModels
             new Task(() =>
             {
                 IsConnecting = true;
-                Conductor.Instance.StartLogin(Ip.Value, Port.Value);
+                Conductor.Instance.StartLogin(Ip.Value, Port.Value, ClientName.Value);
             }).Start();
         }
 
@@ -2104,6 +2119,7 @@ namespace PeerConnectionClient.ViewModels
             var configTraceServerPort = "55000";
             var peerCcServerIp = new ValidableNonEmptyString("40.74.241.212");
             var ntpServerAddress = new ValidableNonEmptyString("time.windows.com");
+            var peerCcClientName = new ValidableNonEmptyString(Conductor.Instance.GetLocalPeerName());
             var peerCcPortInt = 8888;
 
             if (settings.Values["PeerCCServerIp"] != null)
@@ -2114,6 +2130,11 @@ namespace PeerConnectionClient.ViewModels
             if (settings.Values["PeerCCServerPort"] != null)
             {
                 peerCcPortInt = Convert.ToInt32(settings.Values["PeerCCServerPort"]);
+            }
+
+            if (settings.Values["PeerCCClientName"] != null)
+            {
+                peerCcClientName = new ValidableNonEmptyString((string)settings.Values["PeerCCClientName"]);
             }
 
             var configIceServers = new ObservableCollection<IceServer>();
@@ -2169,6 +2190,7 @@ namespace PeerConnectionClient.ViewModels
                 Ip = peerCcServerIp;
                 NtpServer = ntpServerAddress;
                 Port = new ValidableIntegerString(peerCcPortInt, 0, 65535);
+                ClientName = peerCcClientName;
                 ReevaluateHasServer();
             });
 
@@ -2286,6 +2308,22 @@ namespace PeerConnectionClient.ViewModels
             ReevaluateHasServer();
             var localSettings = ApplicationData.Current.LocalSettings;
             localSettings.Values["PeerCCServerPort"] = _port.Value;
+        }
+
+        /// <summary>
+        /// Client name changed event handler.
+        /// </summary>
+        /// <param name="sender">The sender object.</param>
+        /// <param name="e">Property Changed event information.</param>
+        void ClientName_PropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == "Valid")
+            {
+                ConnectCommand.RaiseCanExecuteChanged();
+            }
+            ReevaluateHasServer();
+            var localSettings = ApplicationData.Current.LocalSettings;
+            localSettings.Values["PeerCCClientName"] = _clientName.Value;
         }
 
         protected StorageFile WebrtcLoggingFile;

@@ -331,13 +331,25 @@
                                 Header="Port"/>
                         </controls:ErrorControl.InnerContent>
                     </controls:ErrorControl>
-                    <TextBlock
+					<controls:ErrorControl 
+                        x:Name="ClientNameTextBox"
+                        DataContext="{Binding ClientName}"
+                        Margin="5"
+                        RelativePanel.Below="ServerPortTextBox">
+						<controls:ErrorControl.InnerContent>
+							<TextBox 
+                                Text="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                MinWidth="160"
+                                Header="ClientName"/>
+						</controls:ErrorControl.InnerContent>
+					</controls:ErrorControl>
+					<TextBlock
                         Name="IceServerHeader"
                         Text="ICE servers"
                         VerticalAlignment="Center"
                         Margin="5"
                         Style="{StaticResource TextBlockHeader}"
-                        RelativePanel.Below="ServerPortTextBox"/>
+                        RelativePanel.Below="ClientNameTextBox"/>
                     <ListBox 
                         Name="IceServersListBox"
                         ItemsSource="{Binding IceServers}"

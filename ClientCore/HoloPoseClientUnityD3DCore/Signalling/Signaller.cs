@@ -25,9 +25,6 @@ namespace HoloPoseClientCore.Signalling
         /// </summary>
         public Signaller()
         {
-            _state = State.NOT_CONNECTED;
-            _myId = -1;
-
             // Annoying but register empty handlers
             // so we don't have to check for null everywhere
             OnSignedIn += () => { };
@@ -39,31 +36,10 @@ namespace HoloPoseClientCore.Signalling
         }
 
         /// <summary>
-        /// The connection state.
-        /// </summary>
-        public enum State
-        {
-            NOT_CONNECTED,
-            RESOLVING, // Note: State not used
-            SIGNING_IN,
-            CONNECTED,
-            SIGNING_OUT_WAITING, // Note: State not used
-            SIGNING_OUT,
-        };
-        protected State _state;
-
-        protected string _clientName;
-        protected int _myId;
-        protected Dictionary<int, string> _peers = new Dictionary<int, string>();
-
-        /// <summary>
         /// Checks if connected to the server.
         /// </summary>
         /// <returns>True if connected to the server.</returns>
-        public bool IsConnected()
-        {
-            return _myId != -1;
-        }
+        public abstract bool IsConnected();
 
         /// <summary>
         /// Connects to the server.

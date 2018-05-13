@@ -1203,13 +1203,14 @@ namespace HoloPoseClient.Signalling
         /// </summary>
         /// <param name="server">The host server.</param>
         /// <param name="port">The port to connect to.</param>
-        public void StartLogin(string server, string port)
+        /// <param name="clientName">The client name to connect as.</param>
+        public void StartLogin(string server, string port, string clientName)
         {
             if (_signaller.IsConnected())
             {
                 return;
             }
-            _signaller.Connect(server, port, GetLocalPeerName());
+            _signaller.Connect(server, port, clientName);
         }
 
         /// <summary>
@@ -1280,7 +1281,7 @@ namespace HoloPoseClient.Signalling
         /// Constructs and returns the local peer name.
         /// </summary>
         /// <returns>The local peer name.</returns>
-        private string GetLocalPeerName()
+        public string GetLocalPeerName()
         {
             var hostname = NetworkInformation.GetHostNames().FirstOrDefault(h => h.Type == HostNameType.DomainName);
             string ret = hostname?.CanonicalName ?? "<unknown host>";
