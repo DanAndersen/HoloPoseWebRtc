@@ -196,10 +196,10 @@ namespace HoloPoseClient.Signalling
         protected bool VideoEnabled = true;
         protected bool AudioEnabled = true;
 
-        public bool ConstraintAudioEnabled;
-        public bool ConstraintVideoEnabled;
+        public bool ConstraintAudioEnabled = true;
+        public bool ConstraintVideoEnabled = true;
 
-        public bool LocalStreamEnabled; // if true, we offer our own local video/audio stream to the peer. if false, we don't.
+        public bool LocalStreamEnabled = true; // if true, we offer our own local video/audio stream to the peer. if false, we don't.
 
         protected string SessionId;
 
