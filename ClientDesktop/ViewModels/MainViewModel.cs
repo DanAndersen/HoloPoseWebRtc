@@ -400,6 +400,17 @@ namespace PeerConnectionClient.ViewModels
                 });
             };
 
+
+            
+            Conductor.Instance.ConstraintAudioEnabled = true;
+            Conductor.Instance.ConstraintVideoEnabled = true;
+            Debug.WriteLine("NOTE: setting audio to " + Conductor.Instance.ConstraintAudioEnabled + " and video to " + Conductor.Instance.ConstraintVideoEnabled + " in the constraints");
+
+            Conductor.Instance.LocalStreamEnabled = false;
+            Debug.WriteLine("NOTE: setting LocalStreamEnabled to " + Conductor.Instance.LocalStreamEnabled);
+
+
+
             // Ready to connect to the server event handler
             Conductor.Instance.OnReadyToConnect += () => { RunOnUiThread(() => { IsReadyToConnect = true; }); };
 

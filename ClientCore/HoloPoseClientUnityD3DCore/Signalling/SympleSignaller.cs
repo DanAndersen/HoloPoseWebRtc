@@ -49,27 +49,66 @@ namespace HoloPoseClientCore.Signalling
             // here we process what the webrtccontext would normally do when a new message comes in.
             // so we adjust the message and pass it on to the Conductor.
 
-            if (m["offer"] != null)
+            string fromServerId;
+
+            var mFromObj = m["from"] as JObject;
+            if (mFromObj != null)
             {
-                Debug.WriteLine("TODO: incoming offer message");
-                throw new NotImplementedException();
-            } else if (m["answer"] != null)
-            {
-                Debug.WriteLine("TODO: incoming answer message");
-                throw new NotImplementedException();
+                fromServerId = (string)mFromObj["id"];
             }
-            else if (m["candidate"] != null)
+            else
             {
-                Debug.WriteLine("TODO: incoming candidate message");
-                throw new NotImplementedException();
+                fromServerId = (string)m["from"]; // string instead of json object
+            }
+
+            JObject parsedAddress = Symple.parseAddress(fromServerId); // handle case where "from" is name|id
+            fromServerId = (string)parsedAddress["id"] ?? fromServerId;
+
+
+            if (_roster.ContainsKey(fromServerId)) {
+                PeerData fromPd = _roster[fromServerId];
+                int fromLocalIntId = fromPd.localIntId;
+
+                if (m["offer"] != null)
+                {
+                    Debug.WriteLine("incoming offer message");
+
+                    JObject messageForConductor = (JObject)m["offer"];
+
+                    RaiseOnMessageFromPeer(fromLocalIntId, messageForConductor.ToString(Formatting.None));
+                }
+                else if (m["answer"] != null)
+                {
+                    Debug.WriteLine("incoming answer message");
+
+                    JObject messageForConductor = (JObject)m["answer"];
+
+                    RaiseOnMessageFromPeer(fromLocalIntId, messageForConductor.ToString(Formatting.None));
+                }
+                else if (m["candidate"] != null)
+                {
+                    Debug.WriteLine("incoming candidate message");
+
+                    JObject messageForConductor = (JObject)m["candidate"];
+
+                    RaiseOnMessageFromPeer(fromLocalIntId, messageForConductor.ToString(Formatting.None));
+                }
+                else
+                {
+                    // the content of the message is unrecognized by the signaller and should be passed along as an incoming message
+                    Debug.WriteLine("TODO: incoming misc message of type " + m["type"]);
+
+                    // this can include things like "presence" messages which were already handled earlier
+
+                }
+
             } else
             {
-                // the content of the message is unrecognized by the signaller and should be passed along as an incoming message
-                Debug.WriteLine("TODO: incoming misc message of type " + m["type"]);
-
-                // this can include things like "presence" messages which were already handled earlier
-
+                Debug.WriteLine("received message from unknown sender " + fromServerId);
             }
+
+
+            
         }
 
 
@@ -474,7 +513,36 @@ namespace HoloPoseClientCore.Signalling
         public override async Task<bool> SendToPeer(int peerId, string message)
         {
             Debug.WriteLine("SympleSignaller:SendToPeer string: " + peerId + " " + message);
-            
+
+            Debug.Assert(IsConnected());
+
+            if (!IsConnected())
+            {
+                return false;
+            }
+
+            if (_localIntIdsToServerIds.ContainsKey(peerId))
+            {
+                string peerServerId = _localIntIdsToServerIds[peerId];
+
+                PeerData recipientPeerData = _roster[peerServerId];
+
+                Debug.WriteLine("original message: " + message);
+
+                JObject parameters = new JObject();
+                parameters["to"] = peerDataToJObject(recipientPeerData);
+                parameters["type"] = "message";
+                parameters["misc_message"] = message; // TODO: not doing anything meaningful with the "BYE" message that PeerCC sends
+
+                send(parameters);
+                return true;
+            }
+            else
+            {
+                Debug.WriteLine("attempted SendToPeer on unknown peer id " + peerId);
+                throw new NotImplementedException();
+            }
+
             throw new NotImplementedException();
         }
 
@@ -509,7 +577,22 @@ namespace HoloPoseClientCore.Signalling
                     JObject parameters = new JObject();
                     parameters["to"] = peerDataToJObject(recipientPeerData);
                     parameters["type"] = "message";
-                    parameters["offer"] = sessionDesc;
+
+                    string jsonMessageType = (string)jsonMessage["type"];
+                    
+                    if (jsonMessageType == "offer")
+                    {
+                        parameters["offer"] = sessionDesc;
+                    } else if (jsonMessageType == "answer")
+                    {
+                        parameters["answer"] = sessionDesc;
+                    } else
+                    {
+                        Debug.WriteLine("unknown jsonMessageType for sdp: " + jsonMessageType);
+                        throw new NotImplementedException();
+                    }
+
+                    
 
                     send(parameters);
                     return true;

@@ -195,6 +195,12 @@ namespace HoloPoseClient.Signalling
         private int _peerId = -1;
         protected bool VideoEnabled = true;
         protected bool AudioEnabled = true;
+
+        public bool ConstraintAudioEnabled;
+        public bool ConstraintVideoEnabled;
+
+        public bool LocalStreamEnabled; // if true, we offer our own local video/audio stream to the peer. if false, we don't.
+
         protected string SessionId;
 
         bool _etwStatsEnabled;
@@ -634,20 +640,27 @@ namespace HoloPoseClient.Signalling
             _peerConnection.OnRemoveStream += PeerConnection_OnRemoveStream;
             _peerConnection.OnConnectionHealthStats += PeerConnection_OnConnectionHealthStats;
 #endif
-            Debug.WriteLine("Conductor: Getting user media.");
-            RTCMediaStreamConstraints mediaStreamConstraints = new RTCMediaStreamConstraints
-            {
-                // Always include audio/video enabled in the media stream,
-                // so it will be possible to enable/disable audio/video if 
-                // the call was initiated without microphone/camera
-                audioEnabled = true,
-                videoEnabled = true
-            };
 
-            if (cancelationToken.IsCancellationRequested)
+            if (LocalStreamEnabled)
             {
-                return false;
-            }
+                Debug.WriteLine("Conductor: Getting user media.");
+                RTCMediaStreamConstraints mediaStreamConstraints = new RTCMediaStreamConstraints
+                {
+                    // Old:
+                    // Always include audio/video enabled in the media stream,
+                    // so it will be possible to enable/disable audio/video if 
+                    // the call was initiated without microphone/camera
+                    // ------------
+                    // New: 
+                    // Let the constraint be configurable so we can accept video-only streams
+                    audioEnabled = ConstraintAudioEnabled,
+                    videoEnabled = ConstraintVideoEnabled
+                };
+
+                if (cancelationToken.IsCancellationRequested)
+                {
+                    return false;
+                }
 
 #if ORTCLIB
             var tracks = await _media.GetUserMedia(mediaStreamConstraints);
@@ -679,23 +692,23 @@ namespace HoloPoseClient.Signalling
                 }
             }
 #else
-            _mediaStream = await _media.GetUserMedia(mediaStreamConstraints);
+                _mediaStream = await _media.GetUserMedia(mediaStreamConstraints);
 #endif
 
-            if (cancelationToken.IsCancellationRequested)
-            {
-                return false;
-            }
+                if (cancelationToken.IsCancellationRequested)
+                {
+                    return false;
+                }
 
 #if !ORTCLIB
-            Debug.WriteLine("Conductor: Adding local media stream.");
-            _peerConnection.AddStream(_mediaStream);
+                Debug.WriteLine("Conductor: Adding local media stream.");
+                _peerConnection.AddStream(_mediaStream);
 #endif
-            _selfVideoTrack = _mediaStream.GetVideoTracks().FirstOrDefault();
-            if (_selfVideoTrack != null)
-            {
-                if (VideoLoopbackEnabled)
+                _selfVideoTrack = _mediaStream.GetVideoTracks().FirstOrDefault();
+                if (_selfVideoTrack != null)
                 {
+                    if (VideoLoopbackEnabled)
+                    {
 #if UNITY_XAML
                     if (UnityPlayer.AppCallbacks.Instance.IsInitialized())
                     {
@@ -707,17 +720,20 @@ namespace HoloPoseClient.Signalling
                         ), false);
                     }
 #elif !UNITY
-                    Conductor.Instance.Media.AddVideoTrackMediaElementPair(_selfVideoTrack, SelfVideo, "SELF");
+                        Conductor.Instance.Media.AddVideoTrackMediaElementPair(_selfVideoTrack, SelfVideo, "SELF");
 #endif
+                    }
+                }
+
+                OnAddLocalStream?.Invoke();
+
+                if (cancelationToken.IsCancellationRequested)
+                {
+                    return false;
                 }
             }
 
-            OnAddLocalStream?.Invoke();
-
-            if (cancelationToken.IsCancellationRequested)
-            {
-                return false;
-            }
+            
             return true;
         }
 
@@ -864,6 +880,7 @@ namespace HoloPoseClient.Signalling
         public event Action OnAddRemoteStream;
         private void PeerConnection_OnAddStream(MediaStreamEvent evt)
         {
+            Debug.WriteLine("Conductor: PeerConnection_OnAddStream");
             _peerVideoTrack = evt.Stream.GetVideoTracks().FirstOrDefault();
             if (_peerVideoTrack != null)
             {
