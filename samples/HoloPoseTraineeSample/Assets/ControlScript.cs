@@ -27,6 +27,9 @@ public class ControlScript : MonoBehaviour
     public RawImage RemoteVideoImage;
 
     public InputField ServerAddressInputField;
+    public InputField ServerPortInputField;
+    public InputField ClientNameInputField;
+
     public Button ConnectButton;
     public Button CallButton;
     public RectTransform PeerContent;
@@ -81,9 +84,11 @@ public class ControlScript : MonoBehaviour
         Conductor.Instance.EnableLogging(Conductor.LogLevel.Verbose);
 #endif
         //ServerAddressInputField.text = "peercc-server.ortclib.org";
-        ServerAddressInputField.text = "128.10.9.56";
+        //ServerAddressInputField.text = "128.10.9.56";
+        ServerAddressInputField.text = "https://purduestarproj-webrtc-signal.herokuapp.com";
+        ServerPortInputField.text = "443";
+        ClientNameInputField.text = "star-trainee";
 
-        
     }
 
     private void OnEnable()
@@ -275,7 +280,7 @@ public class ControlScript : MonoBehaviour
             {
                 new Task(() =>
                 {
-                    Conductor.Instance.StartLogin(ServerAddressInputField.text, "8888");
+                    Conductor.Instance.StartLogin(ServerAddressInputField.text, ServerPortInputField.text, ClientNameInputField.text);
                 }).Start();
                 status = Status.Connecting;
             }
