@@ -560,6 +560,21 @@ public class ControlScript : MonoBehaviour
                 {
                     if (selectedCapability == null)
                         selectedCapability = capability;
+
+                    // select the capability with the lowest resolution
+
+                    if (selectedCapability != null)
+                    {
+                        uint selectedResolution = selectedCapability.Width * selectedCapability.Height;
+
+                        uint resolution = capability.Width * capability.Height;
+
+                        if (resolution < selectedResolution)
+                        {
+                            selectedCapability = capability;
+                        }
+                    }
+
                     System.Diagnostics.Debug.WriteLine("Video device capability - " + device.Name + " - " + capability.Width + "x" + capability.Height + "@" + capability.FrameRate);
                 }
             }).Wait();
