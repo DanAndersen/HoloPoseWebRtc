@@ -167,18 +167,18 @@
     </Page>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\ClientCore\HoloPoseClientUnityD3DCore\HoloPoseClientCore.csproj">
-      <Project>{1d6dc205-3a82-408c-b41e-1b6036b5ea02}</Project>
-      <Name>HoloPoseClientCore</Name>
-    </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
     <PackageReference Include="HockeySDK.WINRT">
       <Version>4.1.6</Version>
     </PackageReference>
     <PackageReference Include="Microsoft.NETCore.UniversalWindowsPlatform">
       <Version>6.0.8</Version>
     </PackageReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\ClientCore\HoloPoseClientDesktopCore\HoloPoseClientDesktopCore.csproj">
+      <Project>{f8b01900-4add-44e4-830b-d2dbefe59dc2}</Project>
+      <Name>HoloPoseClientDesktopCore</Name>
+    </ProjectReference>
   </ItemGroup>
   <PropertyGroup Condition=" '$(VisualStudioVersion)' == '' or '$(VisualStudioVersion)' &lt; '14.0' ">
     <VisualStudioVersion>14.0</VisualStudioVersion>
