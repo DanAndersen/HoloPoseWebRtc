@@ -406,7 +406,7 @@ namespace PeerConnectionClient.ViewModels
             Conductor.Instance.ConstraintVideoEnabled = true;
             Debug.WriteLine("NOTE: setting audio to " + Conductor.Instance.ConstraintAudioEnabled + " and video to " + Conductor.Instance.ConstraintVideoEnabled + " in the constraints");
 
-            Conductor.Instance.LocalStreamEnabled = false;
+            Conductor.Instance.LocalStreamEnabled = true;
             Debug.WriteLine("NOTE: setting LocalStreamEnabled to " + Conductor.Instance.LocalStreamEnabled);
 
 
