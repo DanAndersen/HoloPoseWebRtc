@@ -5,7 +5,7 @@ using UnityEngine.UI;
 using System.Collections.Generic;
 using UnityEngine.EventSystems;
 
-#if !UNITY_EDITOR
+#if NETFX_CORE
 using Windows.UI.Core;
 using Windows.Foundation;
 using Windows.Media.Core;
@@ -59,7 +59,7 @@ public class ControlScript : MonoBehaviour
     private struct Command
     {
         public CommandType type;
-#if !UNITY_EDITOR
+#if NETFX_CORE
         public Conductor.Peer remotePeer;
 #endif
     }
@@ -78,7 +78,7 @@ public class ControlScript : MonoBehaviour
 
     void Start()
     {
-#if !UNITY_EDITOR
+#if NETFX_CORE
         Conductor.Instance.Initialized += Conductor_Initialized;
         Conductor.Instance.Initialize(CoreApplication.MainView.CoreWindow.Dispatcher);
         Conductor.Instance.EnableLogging(Conductor.LogLevel.Verbose);
@@ -120,7 +120,7 @@ public class ControlScript : MonoBehaviour
 
     private void Update()
     {
-#if !UNITY_EDITOR
+#if NETFX_CORE
         lock (this)
         {
             switch (status)
@@ -273,7 +273,7 @@ public class ControlScript : MonoBehaviour
 
     public void OnConnectClick()
     {
-#if !UNITY_EDITOR
+#if NETFX_CORE
         lock (this)
         {
             if (status == Status.NotConnected)
@@ -305,7 +305,7 @@ public class ControlScript : MonoBehaviour
 
     public void OnCallClick()
     {
-#if !UNITY_EDITOR
+#if NETFX_CORE
         lock (this)
         {
             if (status == Status.Connected)
@@ -340,7 +340,7 @@ public class ControlScript : MonoBehaviour
 
     public void OnRemotePeerItemClick(PointerEventData data)
     {
-#if !UNITY_EDITOR
+#if NETFX_CORE
         for (int i = 0; i < PeerContent.transform.childCount; i++)
         {
             if (PeerContent.GetChild(i) == data.selectedObject.transform)
@@ -356,7 +356,7 @@ public class ControlScript : MonoBehaviour
 #endif
     }
 
-#if !UNITY_EDITOR
+#if NETFX_CORE
     public async Task OnAppSuspending()
     {
         Conductor.Instance.CancelConnectingToPeer();
@@ -375,7 +375,7 @@ public class ControlScript : MonoBehaviour
 
     public void Initialize()
     {
-#if !UNITY_EDITOR
+#if NETFX_CORE
         // A Peer is connected to the server event handler
         Conductor.Instance.Signaller.OnPeerConnected += (peerId, peerName) =>
         {
@@ -577,7 +577,7 @@ public class ControlScript : MonoBehaviour
 
     private void Conductor_OnAddRemoteStream()
     {
-#if !UNITY_EDITOR
+#if NETFX_CORE
         var task = RunOnUiThread(() =>
         {
             lock (this)
@@ -611,7 +611,7 @@ public class ControlScript : MonoBehaviour
 
     private void Conductor_OnRemoveRemoteStream()
     {
-#if !UNITY_EDITOR
+#if NETFX_CORE
         var task = RunOnUiThread(() =>
         {
             lock (this)
@@ -633,7 +633,7 @@ public class ControlScript : MonoBehaviour
 
     private void Conductor_OnAddLocalStream()
     {
-#if !UNITY_EDITOR
+#if NETFX_CORE
         var task = RunOnUiThread(() =>
         {
             lock (this)
@@ -683,7 +683,7 @@ public class ControlScript : MonoBehaviour
         [DllImport("MediaEngineUWP", CallingConvention = CallingConvention.StdCall, EntryPoint = "GetRemotePrimaryTexture")]
         internal static extern void GetRemotePrimaryTexture(UInt32 width, UInt32 height, out System.IntPtr playbackTexture);
 
-#if !UNITY_EDITOR
+#if NETFX_CORE
         [DllImport("MediaEngineUWP", CallingConvention = CallingConvention.StdCall, EntryPoint = "LoadLocalMediaStreamSource")]
         internal static extern void LoadLocalMediaStreamSource(MediaStreamSource IMediaSourceHandler);
 

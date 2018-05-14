@@ -40,7 +40,7 @@ namespace SympleRtcCore
 #endif
 
 #if NETFX_CORE
-        public virtual async void _play(JObject parameters) { }
+        public virtual void _play(JObject parameters) { }
 #endif
 
         public abstract void stop();
