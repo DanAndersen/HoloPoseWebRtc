@@ -26,6 +26,8 @@ using Windows.UI.Xaml.Controls;
 using Windows.Foundation;
 using Windows.Media.Core;
 using HoloPoseClientCore.Signalling;
+using Windows.Perception.Spatial;
+using System.Runtime.InteropServices;
 #if ORTCLIB
 using Org.Ortc;
 using Org.Ortc.Adapter;
@@ -1511,5 +1513,14 @@ namespace HoloPoseClient.Signalling
                 Debug.WriteLine("Conductor: Connecting to peer flow canceled");
             }
         }
+
+        /*
+        // Set up spatial coordinate system for sending pose metadata
+        public void InitializeSpatialCoordinateSystem(IntPtr spatialCoordinateSystemPtr)
+        {
+            SpatialCoordinateSystem spatialCoordinateSystem = Marshal.PtrToStructure<SpatialCoordinateSystem>(spatialCoordinateSystemPtr);
+            Media.SetSpatialCoordinateSystem(spatialCoordinateSystem);
+        }
+        */
     }
 }

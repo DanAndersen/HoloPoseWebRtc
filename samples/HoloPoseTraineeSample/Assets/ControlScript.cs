@@ -4,8 +4,9 @@ using UnityEngine;
 using UnityEngine.UI;
 using System.Collections.Generic;
 using UnityEngine.EventSystems;
+using UnityEngine.XR.WSA;
 
-#if NETFX_CORE
+#if !UNITY_EDITOR
 using Windows.UI.Core;
 using Windows.Foundation;
 using Windows.Media.Core;
@@ -59,7 +60,7 @@ public class ControlScript : MonoBehaviour
     private struct Command
     {
         public CommandType type;
-#if NETFX_CORE
+#if !UNITY_EDITOR
         public Conductor.Peer remotePeer;
 #endif
     }
@@ -78,17 +79,34 @@ public class ControlScript : MonoBehaviour
 
     void Start()
     {
-#if NETFX_CORE
+#if !UNITY_EDITOR
+        Debug.Log("doing early test");
+        Org.WebRtc.Media fooMedia = Org.WebRtc.Media.CreateMedia();
+        Debug.Log("fooMedia: " + fooMedia);
+        fooMedia.Dispose();
+        Debug.Log("disposed of fooMedia");
+#endif
+
+#if !UNITY_EDITOR
+        Debug.Log("skipping Conductor spatial coordinate system stuff...");
         Conductor.Instance.Initialized += Conductor_Initialized;
         Conductor.Instance.Initialize(CoreApplication.MainView.CoreWindow.Dispatcher);
         Conductor.Instance.EnableLogging(Conductor.LogLevel.Verbose);
+        /*
+        // Set up spatial coordinate system for sending pose metadata
+        Debug.Log("setting up spatial coordinate system");
+        IntPtr spatialCoordinateSystemPtr = WorldManager.GetNativeISpatialCoordinateSystemPtr();
+        Debug.Log("spatialCoordinateSystemPtr: " + spatialCoordinateSystemPtr.ToString());
+        Conductor.Instance.InitializeSpatialCoordinateSystem(spatialCoordinateSystemPtr);
+        Debug.Log("SetSpatialCoordinateSystem done");
+        */
+        
 #endif
         //ServerAddressInputField.text = "peercc-server.ortclib.org";
         //ServerAddressInputField.text = "128.10.9.56";
         ServerAddressInputField.text = "https://purduestarproj-webrtc-signal.herokuapp.com";
         ServerPortInputField.text = "443";
         ClientNameInputField.text = "star-trainee";
-
     }
 
     private void OnEnable()
@@ -120,7 +138,7 @@ public class ControlScript : MonoBehaviour
 
     private void Update()
     {
-#if NETFX_CORE
+#if !UNITY_EDITOR
         lock (this)
         {
             switch (status)
@@ -273,7 +291,7 @@ public class ControlScript : MonoBehaviour
 
     public void OnConnectClick()
     {
-#if NETFX_CORE
+#if !UNITY_EDITOR
         lock (this)
         {
             if (status == Status.NotConnected)
@@ -305,7 +323,7 @@ public class ControlScript : MonoBehaviour
 
     public void OnCallClick()
     {
-#if NETFX_CORE
+#if !UNITY_EDITOR
         lock (this)
         {
             if (status == Status.Connected)
@@ -340,7 +358,7 @@ public class ControlScript : MonoBehaviour
 
     public void OnRemotePeerItemClick(PointerEventData data)
     {
-#if NETFX_CORE
+#if !UNITY_EDITOR
         for (int i = 0; i < PeerContent.transform.childCount; i++)
         {
             if (PeerContent.GetChild(i) == data.selectedObject.transform)
@@ -356,7 +374,7 @@ public class ControlScript : MonoBehaviour
 #endif
     }
 
-#if NETFX_CORE
+#if !UNITY_EDITOR
     public async Task OnAppSuspending()
     {
         Conductor.Instance.CancelConnectingToPeer();
@@ -375,7 +393,7 @@ public class ControlScript : MonoBehaviour
 
     public void Initialize()
     {
-#if NETFX_CORE
+#if !UNITY_EDITOR
         // A Peer is connected to the server event handler
         Conductor.Instance.Signaller.OnPeerConnected += (peerId, peerName) =>
         {
@@ -545,11 +563,15 @@ public class ControlScript : MonoBehaviour
         Conductor.Instance.AudioCodec = audioCodecList.FirstOrDefault(c => c.Name == "opus");
         System.Diagnostics.Debug.WriteLine("Selected audio codec - " + Conductor.Instance.AudioCodec.Name);
 
-        // Order the video codecs so that the stable VP8 is in front.
         var videoCodecList = Conductor.Instance.GetVideoCodecs();
-        Conductor.Instance.VideoCodec = videoCodecList.FirstOrDefault(c => c.Name == "H264");
+        //Conductor.Instance.VideoCodec = videoCodecList.FirstOrDefault(c => c.Name == "H264");
+        //Conductor.Instance.VideoCodec = videoCodecList.FirstOrDefault(c => c.Name == "VP8");
         System.Diagnostics.Debug.WriteLine("Selected video codec - " + Conductor.Instance.VideoCodec.Name);
 
+        uint preferredWidth = 896;
+        uint preferredHeght = 504;
+        uint preferredFrameRate = 15;
+        uint minSizeDiff = uint.MaxValue;
         Conductor.CaptureCapability selectedCapability = null;
         var videoDeviceList = Conductor.Instance.GetVideoCaptureDevices();
         foreach (Conductor.MediaDevice device in videoDeviceList)
@@ -558,23 +580,12 @@ public class ControlScript : MonoBehaviour
             {
                 foreach (Conductor.CaptureCapability capability in capabilities.Result)
                 {
-                    if (selectedCapability == null)
-                        selectedCapability = capability;
-
-                    // select the capability with the lowest resolution
-
-                    if (selectedCapability != null)
+                    uint sizeDiff = (uint)Math.Abs(preferredWidth - capability.Width) + (uint)Math.Abs(preferredHeght - capability.Height);
+                    if (sizeDiff < minSizeDiff)
                     {
-                        uint selectedResolution = selectedCapability.Width * selectedCapability.Height;
-
-                        uint resolution = capability.Width * capability.Height;
-
-                        if (resolution < selectedResolution)
-                        {
-                            selectedCapability = capability;
-                        }
+                        selectedCapability = capability;
+                        minSizeDiff = sizeDiff;
                     }
-
                     System.Diagnostics.Debug.WriteLine("Video device capability - " + device.Name + " - " + capability.Width + "x" + capability.Height + "@" + capability.FrameRate);
                 }
             }).Wait();
@@ -582,6 +593,7 @@ public class ControlScript : MonoBehaviour
 
         if (selectedCapability != null)
         {
+            selectedCapability.FrameRate = preferredFrameRate;
             Conductor.Instance.VideoCaptureProfile = selectedCapability;
             Conductor.Instance.UpdatePreferredFrameFormat();
             System.Diagnostics.Debug.WriteLine("Selected video device capability - " + selectedCapability.Width + "x" + selectedCapability.Height + "@" + selectedCapability.FrameRate);
@@ -592,7 +604,7 @@ public class ControlScript : MonoBehaviour
 
     private void Conductor_OnAddRemoteStream()
     {
-#if NETFX_CORE
+#if !UNITY_EDITOR
         var task = RunOnUiThread(() =>
         {
             lock (this)
@@ -626,7 +638,7 @@ public class ControlScript : MonoBehaviour
 
     private void Conductor_OnRemoveRemoteStream()
     {
-#if NETFX_CORE
+#if !UNITY_EDITOR
         var task = RunOnUiThread(() =>
         {
             lock (this)
@@ -648,7 +660,7 @@ public class ControlScript : MonoBehaviour
 
     private void Conductor_OnAddLocalStream()
     {
-#if NETFX_CORE
+#if !UNITY_EDITOR
         var task = RunOnUiThread(() =>
         {
             lock (this)
@@ -698,7 +710,7 @@ public class ControlScript : MonoBehaviour
         [DllImport("MediaEngineUWP", CallingConvention = CallingConvention.StdCall, EntryPoint = "GetRemotePrimaryTexture")]
         internal static extern void GetRemotePrimaryTexture(UInt32 width, UInt32 height, out System.IntPtr playbackTexture);
 
-#if NETFX_CORE
+#if !UNITY_EDITOR
         [DllImport("MediaEngineUWP", CallingConvention = CallingConvention.StdCall, EntryPoint = "LoadLocalMediaStreamSource")]
         internal static extern void LoadLocalMediaStreamSource(MediaStreamSource IMediaSourceHandler);
 
