@@ -564,7 +564,7 @@ public class ControlScript : MonoBehaviour
 
         var videoCodecList = Conductor.Instance.GetVideoCodecs();
         //Conductor.Instance.VideoCodec = videoCodecList.FirstOrDefault(c => c.Name == "H264");
-        //Conductor.Instance.VideoCodec = videoCodecList.FirstOrDefault(c => c.Name == "VP8");
+        Conductor.Instance.VideoCodec = videoCodecList.FirstOrDefault(c => c.Name == "VP8");
         System.Diagnostics.Debug.WriteLine("Selected video codec - " + Conductor.Instance.VideoCodec.Name);
 
         uint preferredWidth = 896;

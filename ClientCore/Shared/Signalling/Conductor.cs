@@ -155,6 +155,9 @@ namespace HoloPoseClient.Signalling
         public MediaElement SelfVideo { get; set; }
         public MediaElement PeerVideo { get; set; }
 
+        private RawVideoSource _peerRawVideoSource;
+        private RawVideoSource _selfRawVideoSource;
+
         /// <summary>
         /// Video codec used in WebRTC session.
         /// </summary>
@@ -260,6 +263,7 @@ namespace HoloPoseClient.Signalling
 #elif !UNITY
                         _media.AddVideoTrackMediaElementPair(_selfVideoTrack, SelfVideo, "SELF");
 #endif
+                        SetupSelfVideoFrameCallbacks(_selfVideoTrack);
                         Debug.WriteLine("Video loopback enabled");
                     }
                 }
@@ -286,6 +290,7 @@ namespace HoloPoseClient.Signalling
 #elif !UNITY
                     _media.RemoveVideoTrackMediaElementPair(_selfVideoTrack);
 #endif
+                    DestroySelfVideoSources();
                     GC.Collect(); // Ensure all references are truly dropped.
                 }
             }
@@ -586,6 +591,56 @@ namespace HoloPoseClient.Signalling
             }
         }
 
+        private void SetupPeerVideoFrameCallbacks(MediaVideoTrack peerVideoTrack)
+        {
+            Debug.WriteLine("Conductor: SetupPeerVideoFrameCallbacks");
+            _peerRawVideoSource = _media.CreateRawVideoSource(peerVideoTrack);
+            _peerRawVideoSource.OnRawVideoFrame += _peerRawVideoSource_OnRawVideoFrame;
+        }
+        
+        private void _peerRawVideoSource_OnRawVideoFrame(
+            uint width, uint height, 
+            byte[] yPlane, uint yPitch, byte[] vPlane, uint vPitch, byte[] uPlane, uint uPitch, 
+            float posX, float posY, float posZ, float rotX, float rotY, float rotZ, float rotW)
+        {
+            Debug.WriteLine("Conductor: _peerRawVideoSource_OnRawVideoFrame " + width + " " + height + " " + posX + " " + posY + " " + posZ + " " + rotX + " " + rotY + " " + rotZ + " " + rotW);
+        }
+
+        private void DestroyPeerVideoSources()
+        {
+            Debug.WriteLine("Conductor: DestroyPeerVideoSources");
+            if (_peerRawVideoSource != null)
+            {
+                _peerRawVideoSource.Dispose();
+                _peerRawVideoSource = null;
+            }
+        }
+
+        private void SetupSelfVideoFrameCallbacks(MediaVideoTrack selfVideoTrack)
+        {
+            Debug.WriteLine("Conductor: SetupSelfVideoFrameCallbacks");
+            _selfRawVideoSource = _media.CreateRawVideoSource(selfVideoTrack);
+            _selfRawVideoSource.OnRawVideoFrame += _selfRawVideoSource_OnRawVideoFrame;
+        }
+
+        private void _selfRawVideoSource_OnRawVideoFrame(
+            uint width, uint height,
+            byte[] yPlane, uint yPitch, byte[] vPlane, uint vPitch, byte[] uPlane, uint uPitch,
+            float posX, float posY, float posZ, float rotX, float rotY, float rotZ, float rotW)
+        {
+            Debug.WriteLine("Conductor: _selfRawVideoSource_OnRawVideoFrame " + width + " " + height + " " + posX + " " + posY + " " + posZ + " " + rotX + " " + rotY + " " + rotZ + " " + rotW);
+        }
+
+        private void DestroySelfVideoSources()
+        {
+            Debug.WriteLine("Conductor: DestroySelfVideoSources");
+            if (_selfRawVideoSource != null)
+            {
+                _selfRawVideoSource.Dispose();
+                _selfRawVideoSource = null;
+            }
+        }
+
         /// <summary>
         /// Creates a peer connection.
         /// </summary>
@@ -724,6 +779,7 @@ namespace HoloPoseClient.Signalling
 #elif !UNITY
                         Conductor.Instance.Media.AddVideoTrackMediaElementPair(_selfVideoTrack, SelfVideo, "SELF");
 #endif
+                        SetupSelfVideoFrameCallbacks(_selfVideoTrack);
                     }
                 }
 
@@ -777,6 +833,8 @@ namespace HoloPoseClient.Signalling
                         Conductor.Instance.Media.RemoveVideoTrackMediaElementPair(_selfVideoTrack);
                     })).AsTask().Wait();
 #endif
+                    DestroyPeerVideoSources();
+                    DestroySelfVideoSources();
 
                     _peerVideoTrack = null;
                     _selfVideoTrack = null;
@@ -906,6 +964,7 @@ namespace HoloPoseClient.Signalling
 #elif !UNITY
                 _media.AddVideoTrackMediaElementPair(_peerVideoTrack, PeerVideo, "PEER");
 #endif
+                SetupPeerVideoFrameCallbacks(_peerVideoTrack);
             }
 
             OnAddRemoteStream?.Invoke();
@@ -930,6 +989,7 @@ namespace HoloPoseClient.Signalling
 #elif !UNITY
             _media.RemoveVideoTrackMediaElementPair(_peerVideoTrack);
 #endif
+            DestroyPeerVideoSources();
             OnRemoveRemoteStream?.Invoke();
         }
 

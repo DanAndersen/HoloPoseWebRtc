@@ -400,6 +400,17 @@ namespace PeerConnectionClient.ViewModels
                 });
             };
 
+            
+
+
+
+
+
+
+
+
+
+
 
             
             Conductor.Instance.ConstraintAudioEnabled = true;
