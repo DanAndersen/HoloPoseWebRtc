@@ -1514,13 +1514,13 @@ namespace HoloPoseClient.Signalling
             }
         }
 
-        /*
+        
         // Set up spatial coordinate system for sending pose metadata
         public void InitializeSpatialCoordinateSystem(IntPtr spatialCoordinateSystemPtr)
         {
-            SpatialCoordinateSystem spatialCoordinateSystem = Marshal.PtrToStructure<SpatialCoordinateSystem>(spatialCoordinateSystemPtr);
+            SpatialCoordinateSystem spatialCoordinateSystem = (SpatialCoordinateSystem)Marshal.GetObjectForIUnknown(spatialCoordinateSystemPtr);
             Media.SetSpatialCoordinateSystem(spatialCoordinateSystem);
         }
-        */
+        
     }
 }

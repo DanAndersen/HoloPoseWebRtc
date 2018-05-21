@@ -88,19 +88,18 @@ public class ControlScript : MonoBehaviour
 #endif
 
 #if !UNITY_EDITOR
-        Debug.Log("skipping Conductor spatial coordinate system stuff...");
-        Conductor.Instance.Initialized += Conductor_Initialized;
-        Conductor.Instance.Initialize(CoreApplication.MainView.CoreWindow.Dispatcher);
-        Conductor.Instance.EnableLogging(Conductor.LogLevel.Verbose);
-        /*
         // Set up spatial coordinate system for sending pose metadata
         Debug.Log("setting up spatial coordinate system");
         IntPtr spatialCoordinateSystemPtr = WorldManager.GetNativeISpatialCoordinateSystemPtr();
         Debug.Log("spatialCoordinateSystemPtr: " + spatialCoordinateSystemPtr.ToString());
         Conductor.Instance.InitializeSpatialCoordinateSystem(spatialCoordinateSystemPtr);
         Debug.Log("SetSpatialCoordinateSystem done");
-        */
-        
+
+        Debug.Log("setting up the rest of the conductor...");
+        Conductor.Instance.Initialized += Conductor_Initialized;
+        Conductor.Instance.Initialize(CoreApplication.MainView.CoreWindow.Dispatcher);
+        Conductor.Instance.EnableLogging(Conductor.LogLevel.Verbose);
+        Debug.Log("done setting up the rest of the conductor");
 #endif
         //ServerAddressInputField.text = "peercc-server.ortclib.org";
         //ServerAddressInputField.text = "128.10.9.56";
