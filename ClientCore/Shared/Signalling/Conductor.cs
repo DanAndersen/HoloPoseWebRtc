@@ -597,7 +597,7 @@ namespace HoloPoseClient.Signalling
             _peerRawVideoSource = _media.CreateRawVideoSource(peerVideoTrack);
             _peerRawVideoSource.OnRawVideoFrame += _peerRawVideoSource_OnRawVideoFrame;
         }
-        
+
         private void _peerRawVideoSource_OnRawVideoFrame(
             uint width, uint height, 
             byte[] yPlane, uint yPitch, byte[] vPlane, uint vPitch, byte[] uPlane, uint uPitch, 
