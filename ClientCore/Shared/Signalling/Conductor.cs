@@ -628,7 +628,7 @@ namespace HoloPoseClient.Signalling
             byte[] yPlane, uint yPitch, byte[] vPlane, uint vPitch, byte[] uPlane, uint uPitch,
             float posX, float posY, float posZ, float rotX, float rotY, float rotZ, float rotW)
         {
-            Debug.WriteLine("Conductor: _selfRawVideoSource_OnRawVideoFrame " + width + " " + height + " " + posX + " " + posY + " " + posZ + " " + rotX + " " + rotY + " " + rotZ + " " + rotW);
+            //Debug.WriteLine("Conductor: _selfRawVideoSource_OnRawVideoFrame " + width + " " + height + " " + posX + " " + posY + " " + posZ + " " + rotX + " " + rotY + " " + rotZ + " " + rotW);
         }
 
         private void DestroySelfVideoSources()
