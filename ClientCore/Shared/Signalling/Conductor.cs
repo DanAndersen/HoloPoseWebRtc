@@ -203,9 +203,7 @@ namespace HoloPoseClient.Signalling
 
         public bool ConstraintAudioEnabled = true;
         public bool ConstraintVideoEnabled = true;
-
-        public bool LocalStreamEnabled = true; // if true, we offer our own local video/audio stream to the peer. if false, we don't.
-
+        
         protected string SessionId;
 
         bool _etwStatsEnabled;
@@ -698,26 +696,25 @@ namespace HoloPoseClient.Signalling
             _peerConnection.OnConnectionHealthStats += PeerConnection_OnConnectionHealthStats;
 #endif
 
-            if (LocalStreamEnabled)
+            
+            Debug.WriteLine("Conductor: Getting user media.");
+            RTCMediaStreamConstraints mediaStreamConstraints = new RTCMediaStreamConstraints
             {
-                Debug.WriteLine("Conductor: Getting user media.");
-                RTCMediaStreamConstraints mediaStreamConstraints = new RTCMediaStreamConstraints
-                {
-                    // Old:
-                    // Always include audio/video enabled in the media stream,
-                    // so it will be possible to enable/disable audio/video if 
-                    // the call was initiated without microphone/camera
-                    // ------------
-                    // New: 
-                    // Let the constraint be configurable so we can accept video-only streams
-                    audioEnabled = ConstraintAudioEnabled,
-                    videoEnabled = ConstraintVideoEnabled
-                };
+                // Old:
+                // Always include audio/video enabled in the media stream,
+                // so it will be possible to enable/disable audio/video if 
+                // the call was initiated without microphone/camera
+                // ------------
+                // New: 
+                // Let the constraint be configurable so we can accept video-only streams
+                audioEnabled = ConstraintAudioEnabled,
+                videoEnabled = ConstraintVideoEnabled
+            };
 
-                if (cancelationToken.IsCancellationRequested)
-                {
-                    return false;
-                }
+            if (cancelationToken.IsCancellationRequested)
+            {
+                return false;
+            }
 
 #if ORTCLIB
             var tracks = await _media.GetUserMedia(mediaStreamConstraints);
@@ -749,47 +746,49 @@ namespace HoloPoseClient.Signalling
                 }
             }
 #else
-                _mediaStream = await _media.GetUserMedia(mediaStreamConstraints);
+            _mediaStream = await _media.GetUserMedia(mediaStreamConstraints);
 #endif
 
-                if (cancelationToken.IsCancellationRequested)
-                {
-                    return false;
-                }
+            if (cancelationToken.IsCancellationRequested)
+            {
+                return false;
+            }
 
+            
 #if !ORTCLIB
-                Debug.WriteLine("Conductor: Adding local media stream.");
-                _peerConnection.AddStream(_mediaStream);
+            Debug.WriteLine("Conductor: Adding local media stream.");
+            _peerConnection.AddStream(_mediaStream);
 #endif
-                _selfVideoTrack = _mediaStream.GetVideoTracks().FirstOrDefault();
-                if (_selfVideoTrack != null)
+            _selfVideoTrack = _mediaStream.GetVideoTracks().FirstOrDefault();
+            if (_selfVideoTrack != null)
+            {
+                if (VideoLoopbackEnabled)
                 {
-                    if (VideoLoopbackEnabled)
-                    {
 #if UNITY_XAML
-                    if (UnityPlayer.AppCallbacks.Instance.IsInitialized())
-                    {
-                        UnityPlayer.AppCallbacks.Instance.InvokeOnAppThread(new UnityPlayer.AppCallbackItem(() =>
-                        {
-                            UnityEngine.GameObject go = UnityEngine.GameObject.Find("Control");
-                            go.GetComponent<ControlScript>().CreateLocalMediaStreamSource(_selfVideoTrack, "I420", "SELF");
-                        }
-                        ), false);
-                    }
-#elif !UNITY
-                        Conductor.Instance.Media.AddVideoTrackMediaElementPair(_selfVideoTrack, SelfVideo, "SELF");
-#endif
-                        SetupSelfVideoFrameCallbacks(_selfVideoTrack);
-                    }
-                }
-
-                OnAddLocalStream?.Invoke();
-
-                if (cancelationToken.IsCancellationRequested)
+            if (UnityPlayer.AppCallbacks.Instance.IsInitialized())
+            {
+                UnityPlayer.AppCallbacks.Instance.InvokeOnAppThread(new UnityPlayer.AppCallbackItem(() =>
                 {
-                    return false;
+                    UnityEngine.GameObject go = UnityEngine.GameObject.Find("Control");
+                    go.GetComponent<ControlScript>().CreateLocalMediaStreamSource(_selfVideoTrack, "I420", "SELF");
+                }
+                ), false);
+            }
+#elif !UNITY
+                    Conductor.Instance.Media.AddVideoTrackMediaElementPair(_selfVideoTrack, SelfVideo, "SELF");
+#endif
+                    SetupSelfVideoFrameCallbacks(_selfVideoTrack);
                 }
             }
+
+            OnAddLocalStream?.Invoke();
+            
+            
+            if (cancelationToken.IsCancellationRequested)
+            {
+                return false;
+            }
+            
 
             
             return true;

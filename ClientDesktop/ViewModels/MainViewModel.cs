@@ -416,11 +416,7 @@ namespace PeerConnectionClient.ViewModels
             Conductor.Instance.ConstraintAudioEnabled = ConstraintAudioEnabled;
             Conductor.Instance.ConstraintVideoEnabled = ConstraintVideoEnabled;
             Debug.WriteLine("NOTE: setting audio to " + Conductor.Instance.ConstraintAudioEnabled + " and video to " + Conductor.Instance.ConstraintVideoEnabled + " in the constraints");
-
-            Conductor.Instance.LocalStreamEnabled = LocalStreamEnabled;
-            Debug.WriteLine("NOTE: setting LocalStreamEnabled to " + Conductor.Instance.LocalStreamEnabled);
-
-
+            
 
             // Ready to connect to the server event handler
             Conductor.Instance.OnReadyToConnect += () => { RunOnUiThread(() => { IsReadyToConnect = true; }); };
@@ -1211,31 +1207,7 @@ namespace PeerConnectionClient.ViewModels
             get { return _isCameraEnabled; }
             set { SetProperty(ref _isCameraEnabled, value); }
         }
-
-        private bool _localStreamEnabled;
-
-        /// <summary>
-        /// If enabled, this client will attempt to send its own stream to the other peer. If disabled, it will just accept incoming video.
-        /// </summary>
-        public bool LocalStreamEnabled
-        {
-            get { return _localStreamEnabled; }
-            set
-            {
-                if (!SetProperty(ref _localStreamEnabled, value))
-                {
-                    return;
-                }
-                else
-                {
-                    Conductor.Instance.LocalStreamEnabled = _localStreamEnabled;
-
-                    var localSettings = ApplicationData.Current.LocalSettings;
-                    localSettings.Values["PeerCCLocalStreamEnabled"] = _localStreamEnabled;
-                }
-            }
-        }
-
+        
         private bool _constraintAudioEnabled;
 
         public bool ConstraintAudioEnabled
@@ -2215,7 +2187,6 @@ namespace PeerConnectionClient.ViewModels
             var ntpServerAddress = new ValidableNonEmptyString("time.windows.com");
             var peerCcClientName = new ValidableNonEmptyString(Conductor.Instance.GetLocalPeerName());
             var peerCcPortInt = 8888;
-            var configLocalStreamEnabled = true;
             var configConstraintAudioEnabled = true;
             var configConstraintVideoEnabled = true;
 
@@ -2233,12 +2204,7 @@ namespace PeerConnectionClient.ViewModels
             {
                 peerCcClientName = new ValidableNonEmptyString((string)settings.Values["PeerCCClientName"]);
             }
-
-            if (settings.Values["PeerCCLocalStreamEnabled"] != null)
-            {
-                configLocalStreamEnabled = (bool) settings.Values["PeerCCLocalStreamEnabled"];
-            }
-
+            
             if (settings.Values["PeerCCConstraintAudioEnabled"] != null)
             {
                 configConstraintAudioEnabled = (bool)settings.Values["PeerCCConstraintAudioEnabled"];
@@ -2303,7 +2269,6 @@ namespace PeerConnectionClient.ViewModels
                 NtpServer = ntpServerAddress;
                 Port = new ValidableIntegerString(peerCcPortInt, 0, 65535);
                 ClientName = peerCcClientName;
-                LocalStreamEnabled = configLocalStreamEnabled;
                 ConstraintAudioEnabled = configConstraintAudioEnabled;
                 ConstraintVideoEnabled = configConstraintVideoEnabled;
                 ReevaluateHasServer();

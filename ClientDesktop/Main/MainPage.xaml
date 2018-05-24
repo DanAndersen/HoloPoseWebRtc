@@ -609,20 +609,12 @@
                         RelativePanel.AlignRightWithPanel="True"
                         RelativePanel.AlignLeftWithPanel="True"/>
                     <ToggleSwitch 
-                        Name="LocalStreamEnabledToggleSwitch"
-                        Header="Local Stream Enabled"
-                        IsOn="{Binding LocalStreamEnabled, Mode=TwoWay}"
-                        HorizontalAlignment="Left"
-                        HorizontalContentAlignment="Left"
-                        RelativePanel.Below="VideoFrameRateCombo"
-                        Margin="5"/>
-                    <ToggleSwitch 
                         Name="ConstraintAudioEnabledToggleSwitch"
                         Header="Constraint Audio Enabled"
                         IsOn="{Binding ConstraintAudioEnabled, Mode=TwoWay}"
                         HorizontalAlignment="Left"
                         HorizontalContentAlignment="Left"
-                        RelativePanel.Below="LocalStreamEnabledToggleSwitch"
+                        RelativePanel.Below="VideoFrameRateCombo"
                         Margin="5"/>
                     <ToggleSwitch 
                         Name="ConstraintVideoEnabledToggleSwitch"
