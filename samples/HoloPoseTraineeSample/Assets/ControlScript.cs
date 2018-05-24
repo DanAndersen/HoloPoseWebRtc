@@ -19,6 +19,10 @@ using Windows.ApplicationModel.Core;
 
 public class ControlScript : MonoBehaviour
 {
+    public string ServerAddress = "https://purduestarproj-webrtc-signal.herokuapp.com";
+    public string ServerPort = "443";
+    public string ClientName = "star-mentor"; // star-trainee, star-mentor, etc
+
     public uint LocalTextureWidth = 160;
     public uint LocalTextureHeight = 120;
     public uint RemoteTextureWidth = 640;
@@ -91,9 +95,16 @@ public class ControlScript : MonoBehaviour
         // Set up spatial coordinate system for sending pose metadata
         Debug.Log("setting up spatial coordinate system");
         IntPtr spatialCoordinateSystemPtr = WorldManager.GetNativeISpatialCoordinateSystemPtr();
-        Debug.Log("spatialCoordinateSystemPtr: " + spatialCoordinateSystemPtr.ToString());
-        Conductor.Instance.InitializeSpatialCoordinateSystem(spatialCoordinateSystemPtr);
-        Debug.Log("SetSpatialCoordinateSystem done");
+        if (spatialCoordinateSystemPtr.ToInt32() != 0)
+        {
+            Debug.Log("spatialCoordinateSystemPtr: " + spatialCoordinateSystemPtr.ToString());
+            Conductor.Instance.InitializeSpatialCoordinateSystem(spatialCoordinateSystemPtr);
+            Debug.Log("SetSpatialCoordinateSystem done");
+        } else
+        {
+            Debug.Log("spatialCoordinateSystemPtr was null. Probably not running on a Mixed Reality headset. Skipping initing video pose data.");
+        }
+        
 
         Debug.Log("setting up the rest of the conductor...");
         Conductor.Instance.Initialized += Conductor_Initialized;
@@ -101,11 +112,9 @@ public class ControlScript : MonoBehaviour
         Conductor.Instance.EnableLogging(Conductor.LogLevel.Verbose);
         Debug.Log("done setting up the rest of the conductor");
 #endif
-        //ServerAddressInputField.text = "peercc-server.ortclib.org";
-        //ServerAddressInputField.text = "128.10.9.56";
-        ServerAddressInputField.text = "https://purduestarproj-webrtc-signal.herokuapp.com";
-        ServerPortInputField.text = "443";
-        ClientNameInputField.text = "star-trainee";
+        ServerAddressInputField.text = ServerAddress;
+        ServerPortInputField.text = ServerPort;
+        ClientNameInputField.text = ClientName;
     }
 
     private void OnEnable()

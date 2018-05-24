@@ -1959,6 +1959,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bda8b2f6c2ffa3546a1365b1b3da0bed, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  ServerAddress: https://purduestarproj-webrtc-signal.herokuapp.com
+  ServerPort: 443
+  ClientName: star-trainee
   LocalTextureWidth: 160
   LocalTextureHeight: 120
   RemoteTextureWidth: 640
