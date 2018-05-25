@@ -83,12 +83,22 @@ public class ControlScript : MonoBehaviour
 
     void Start()
     {
+        /*
+        Debug.Log("NOTE: creating some mock remote peers to test UI");
+        for (int i = 0; i < 5; i++)
+        {
+            string mockName = "mock-peer-" + UnityEngine.Random.value;
+            AddRemotePeer(mockName);
+        }
+        */
+
+
+
+
+
 #if !UNITY_EDITOR
-        Debug.Log("doing early test");
-        Org.WebRtc.Media fooMedia = Org.WebRtc.Media.CreateMedia();
-        Debug.Log("fooMedia: " + fooMedia);
-        fooMedia.Dispose();
-        Debug.Log("disposed of fooMedia");
+        Debug.Log("because this is the MENTOR app, we disable the local stream so we are not sending any video back to the trainee.");
+        Conductor.Instance.LocalStreamEnabled = false;
 #endif
 
 #if !UNITY_EDITOR
@@ -143,6 +153,26 @@ public class ControlScript : MonoBehaviour
         RemoteVideoImage.texture = null;
         Plugin.ReleaseRemoteMediaPlayback();
     }
+
+
+    private void AddRemotePeer(string peerName)
+    {
+        GameObject textItem = (GameObject)Instantiate(TextItemPrefab);
+        textItem.transform.SetParent(PeerContent, false);
+        textItem.GetComponent<Text>().text = peerName;
+        Debug.Log("AddRemotePeer: " + peerName);
+        EventTrigger trigger = textItem.GetComponentInChildren<EventTrigger>();
+        EventTrigger.Entry entry = new EventTrigger.Entry();
+        entry.eventID = EventTriggerType.PointerDown;
+        entry.callback.AddListener((data) => { OnRemotePeerItemClick((PointerEventData)data); });
+        trigger.triggers.Add(entry);
+        if (selectedPeerIndex == -1)
+        {
+            textItem.GetComponent<Text>().fontStyle = FontStyle.Bold;
+            selectedPeerIndex = PeerContent.transform.childCount - 1;
+        }
+    }
+
 
     private void Update()
     {
@@ -243,19 +273,8 @@ public class ControlScript : MonoBehaviour
                 }
                 if (command.type == CommandType.AddRemotePeer)
                 {
-                    GameObject textItem = (GameObject)Instantiate(TextItemPrefab);
-                    textItem.transform.SetParent(PeerContent);
-                    textItem.GetComponent<Text>().text = command.remotePeer.Name;
-                    EventTrigger trigger = textItem.GetComponentInChildren<EventTrigger>();
-                    EventTrigger.Entry entry = new EventTrigger.Entry();
-                    entry.eventID = EventTriggerType.PointerDown;
-                    entry.callback.AddListener((data) => { OnRemotePeerItemClick((PointerEventData)data); });
-                    trigger.triggers.Add(entry);
-                    if (selectedPeerIndex == -1)
-                    {
-                        textItem.GetComponent<Text>().fontStyle = FontStyle.Bold;
-                        selectedPeerIndex = PeerContent.transform.childCount - 1;
-                    }
+                    string remotePeerName = command.remotePeer.Name;
+                    AddRemotePeer(remotePeerName);
                 }
                 else if (command.type == CommandType.RemoveRemotePeer)
                 {
@@ -366,7 +385,6 @@ public class ControlScript : MonoBehaviour
 
     public void OnRemotePeerItemClick(PointerEventData data)
     {
-#if !UNITY_EDITOR
         for (int i = 0; i < PeerContent.transform.childCount; i++)
         {
             if (PeerContent.GetChild(i) == data.selectedObject.transform)
@@ -379,7 +397,6 @@ public class ControlScript : MonoBehaviour
                 PeerContent.GetChild(i).GetComponent<Text>().fontStyle = FontStyle.Normal;
             }
         }
-#endif
     }
 
 #if !UNITY_EDITOR

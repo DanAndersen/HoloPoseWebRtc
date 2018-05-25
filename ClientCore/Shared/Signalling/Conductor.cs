@@ -159,6 +159,11 @@ namespace HoloPoseClient.Signalling
         private RawVideoSource _selfRawVideoSource;
 
         /// <summary>
+        /// If true, offer one's own video when receiving an offer from a remote peer. If false, we accept their video but don't try to send any of our video.
+        /// </summary>
+        public bool LocalStreamEnabled = true;
+
+        /// <summary>
         /// Video codec used in WebRTC session.
         /// </summary>
         public CodecInfo VideoCodec { get; set; }
@@ -716,6 +721,8 @@ namespace HoloPoseClient.Signalling
                 return false;
             }
 
+            if (LocalStreamEnabled)
+            {
 #if ORTCLIB
             var tracks = await _media.GetUserMedia(mediaStreamConstraints);
             if (tracks != null)
@@ -746,24 +753,24 @@ namespace HoloPoseClient.Signalling
                 }
             }
 #else
-            _mediaStream = await _media.GetUserMedia(mediaStreamConstraints);
+                _mediaStream = await _media.GetUserMedia(mediaStreamConstraints);
 #endif
 
-            if (cancelationToken.IsCancellationRequested)
-            {
-                return false;
-            }
-
-            
-#if !ORTCLIB
-            Debug.WriteLine("Conductor: Adding local media stream.");
-            _peerConnection.AddStream(_mediaStream);
-#endif
-            _selfVideoTrack = _mediaStream.GetVideoTracks().FirstOrDefault();
-            if (_selfVideoTrack != null)
-            {
-                if (VideoLoopbackEnabled)
+                if (cancelationToken.IsCancellationRequested)
                 {
+                    return false;
+                }
+
+
+#if !ORTCLIB
+                Debug.WriteLine("Conductor: Adding local media stream.");
+                _peerConnection.AddStream(_mediaStream);
+#endif
+                _selfVideoTrack = _mediaStream.GetVideoTracks().FirstOrDefault();
+                if (_selfVideoTrack != null)
+                {
+                    if (VideoLoopbackEnabled)
+                    {
 #if UNITY_XAML
             if (UnityPlayer.AppCallbacks.Instance.IsInitialized())
             {
@@ -775,13 +782,15 @@ namespace HoloPoseClient.Signalling
                 ), false);
             }
 #elif !UNITY
-                    Conductor.Instance.Media.AddVideoTrackMediaElementPair(_selfVideoTrack, SelfVideo, "SELF");
+                        Conductor.Instance.Media.AddVideoTrackMediaElementPair(_selfVideoTrack, SelfVideo, "SELF");
 #endif
-                    SetupSelfVideoFrameCallbacks(_selfVideoTrack);
+                        SetupSelfVideoFrameCallbacks(_selfVideoTrack);
+                    }
                 }
+
+                OnAddLocalStream?.Invoke();
             }
 
-            OnAddLocalStream?.Invoke();
             
             
             if (cancelationToken.IsCancellationRequested)
