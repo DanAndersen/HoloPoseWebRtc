@@ -22,8 +22,18 @@ public class ControlScript : MonoBehaviour
     public string ServerPort = "443";
     public string ClientName = "star-mentor"; // star-trainee, star-mentor, etc
 
+    // if this is true:
+    // - this client will be able to initiate a call to a peer
+    // - this client will offer its own media
+    // if this is false:
+    // - this client will not be able to initiate a call to a peer (it will accept incoming calls)
+    // - this client will not offer its own media
+    // i.e.: the trainee should have LocalStreamEnabled = true, and the mentor should have LocalStreamEnabled = false
+    public bool LocalStreamEnabled = false;
+    
     public uint LocalTextureWidth = 160;
     public uint LocalTextureHeight = 120;
+
     public uint RemoteTextureWidth = 640;
     public uint RemoteTextureHeight = 480;
 
@@ -97,15 +107,20 @@ public class ControlScript : MonoBehaviour
             AddRemotePeer(mockName);
         }
         */
-        
+
 
 
 
 
 
 #if !UNITY_EDITOR
-        Debug.Log("because this is the MENTOR app, we disable the local stream so we are not sending any video back to the trainee.");
-        Conductor.Instance.LocalStreamEnabled = false;
+        if (LocalStreamEnabled) {
+            Debug.Log("because this is the TRAINEE app, we enable the local stream so we can send video to the mentor.");
+        } else {
+            Debug.Log("because this is the MENTOR app, we disable the local stream so we are not sending any video back to the trainee.");
+        }
+
+        Conductor.Instance.LocalStreamEnabled = LocalStreamEnabled;
 #endif
 
 #if !UNITY_EDITOR
@@ -136,12 +151,16 @@ public class ControlScript : MonoBehaviour
 
     private void OnEnable()
     {
+        if (LocalStreamEnabled)
         {
             Plugin.CreateLocalMediaPlayback();
             IntPtr nativeTex = IntPtr.Zero;
             Plugin.GetLocalPrimaryTexture(LocalTextureWidth, LocalTextureHeight, out nativeTex);
             var primaryPlaybackTexture = Texture2D.CreateExternalTexture((int)LocalTextureWidth, (int)LocalTextureHeight, TextureFormat.BGRA32, false, false, nativeTex);
-            LocalVideoImage.texture = primaryPlaybackTexture;
+            if (LocalVideoImage != null)
+            {
+                LocalVideoImage.texture = primaryPlaybackTexture;
+            }
         }
 
         {
@@ -155,8 +174,15 @@ public class ControlScript : MonoBehaviour
 
     private void OnDisable()
     {
-        LocalVideoImage.texture = null;
-        Plugin.ReleaseLocalMediaPlayback();
+        if (LocalStreamEnabled)
+        {
+            if (LocalVideoImage != null)
+            {
+                LocalVideoImage.texture = null;
+            }
+            Plugin.ReleaseLocalMediaPlayback();
+        }
+
         RemoteVideoImage.texture = null;
         Plugin.ReleaseRemoteMediaPlayback();
     }
@@ -270,8 +296,8 @@ public class ControlScript : MonoBehaviour
                         ServerAddressInputField.enabled = false;
                     if (!ConnectButton.enabled)
                         ConnectButton.enabled = true;
-                    if (!CallButton.enabled)
-                        CallButton.enabled = true;
+                    if (CallButton.enabled != LocalStreamEnabled)
+                        CallButton.enabled = LocalStreamEnabled; // only allow pressing the Call button (when not in a call) if our client is set up to initiate a call
                     break;
                 case Status.Calling:
                     if (ServerAddressInputField.enabled)
