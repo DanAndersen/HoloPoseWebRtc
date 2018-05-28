@@ -13,7 +13,6 @@ using Windows.Media.Core;
 using System.Linq;
 using System.Threading.Tasks;
 using HoloPoseClient.Signalling;
-//using PeerConnectionClient.Signalling;
 using Windows.ApplicationModel.Core;
 #endif
 
@@ -37,7 +36,10 @@ public class ControlScript : MonoBehaviour
 
     public Button ConnectButton;
     public Button CallButton;
+
     public RectTransform PeerContent;
+    public RectTransform SelfConnectedAsContent;
+
     public GameObject TextItemPrefab;
 
     private enum Status
@@ -88,9 +90,14 @@ public class ControlScript : MonoBehaviour
         for (int i = 0; i < 5; i++)
         {
             string mockName = "mock-peer-" + UnityEngine.Random.value;
+            if (i == 0)
+            {
+                mockName = ClientName; // testing to make sure we can't accidentally call ourselves
+            }
             AddRemotePeer(mockName);
         }
         */
+        
 
 
 
@@ -157,19 +164,72 @@ public class ControlScript : MonoBehaviour
 
     private void AddRemotePeer(string peerName)
     {
-        GameObject textItem = (GameObject)Instantiate(TextItemPrefab);
-        textItem.transform.SetParent(PeerContent, false);
-        textItem.GetComponent<Text>().text = peerName;
+        bool isSelf = (peerName == ClientName); // when we connect, our own user appears as a peer. we don't want to accidentally try to call ourselves.
+
         Debug.Log("AddRemotePeer: " + peerName);
-        EventTrigger trigger = textItem.GetComponentInChildren<EventTrigger>();
-        EventTrigger.Entry entry = new EventTrigger.Entry();
-        entry.eventID = EventTriggerType.PointerDown;
-        entry.callback.AddListener((data) => { OnRemotePeerItemClick((PointerEventData)data); });
-        trigger.triggers.Add(entry);
-        if (selectedPeerIndex == -1)
+        GameObject textItem = (GameObject)Instantiate(TextItemPrefab);
+
+        textItem.GetComponent<Text>().text = peerName;
+
+        if (isSelf)
         {
-            textItem.GetComponent<Text>().fontStyle = FontStyle.Bold;
-            selectedPeerIndex = PeerContent.transform.childCount - 1;
+            textItem.transform.SetParent(SelfConnectedAsContent, false);
+        } else
+        {
+            textItem.transform.SetParent(PeerContent, false);
+
+            EventTrigger trigger = textItem.GetComponentInChildren<EventTrigger>();
+            EventTrigger.Entry entry = new EventTrigger.Entry();
+            entry.eventID = EventTriggerType.PointerDown;
+            entry.callback.AddListener((data) => { OnRemotePeerItemClick((PointerEventData)data); });
+            trigger.triggers.Add(entry);
+
+            if (selectedPeerIndex == -1)
+            {
+                textItem.GetComponent<Text>().fontStyle = FontStyle.Bold;
+                selectedPeerIndex = PeerContent.transform.childCount - 1;
+            }
+        }
+    }
+
+    private void RemoveRemotePeer(string peerName)
+    {
+        bool isSelf = (peerName == ClientName); // when we connect, our own user appears as a peer. we don't want to accidentally try to call ourselves.
+
+        Debug.Log("RemoveRemotePeer: " + peerName);
+
+        if (isSelf)
+        {
+            for (int i = 0; i < SelfConnectedAsContent.transform.childCount; i++)
+            {
+                if (SelfConnectedAsContent.GetChild(i).GetComponent<Text>().text == peerName)
+                {
+                    SelfConnectedAsContent.GetChild(i).SetParent(null);
+                    break;
+                }
+            }
+        } else
+        {
+            for (int i = 0; i < PeerContent.transform.childCount; i++)
+            {
+                if (PeerContent.GetChild(i).GetComponent<Text>().text == peerName)
+                {
+                    PeerContent.GetChild(i).SetParent(null);
+                    if (selectedPeerIndex == i)
+                    {
+                        if (PeerContent.transform.childCount > 0)
+                        {
+                            PeerContent.GetChild(0).GetComponent<Text>().fontStyle = FontStyle.Bold;
+                            selectedPeerIndex = 0;
+                        }
+                        else
+                        {
+                            selectedPeerIndex = -1;
+                        }
+                    }
+                    break;
+                }
+            }
         }
     }
 
@@ -278,26 +338,8 @@ public class ControlScript : MonoBehaviour
                 }
                 else if (command.type == CommandType.RemoveRemotePeer)
                 {
-                    for (int i = 0; i < PeerContent.transform.childCount; i++)
-                    {
-                        if (PeerContent.GetChild(i).GetComponent<Text>().text == command.remotePeer.Name)
-                        {
-                            PeerContent.GetChild(i).SetParent(null);
-                            if (selectedPeerIndex == i)
-                            {
-                                if (PeerContent.transform.childCount > 0)
-                                {
-                                    PeerContent.GetChild(0).GetComponent<Text>().fontStyle = FontStyle.Bold;
-                                    selectedPeerIndex = 0;
-                                }
-                                else
-                                {
-                                    selectedPeerIndex = -1;
-                                }
-                            }
-                            break;
-                        }
-                    }
+                    string remotePeerName = command.remotePeer.name;
+                    RemoveRemotePeer(remotePeerName);
                 }
             }
         }
