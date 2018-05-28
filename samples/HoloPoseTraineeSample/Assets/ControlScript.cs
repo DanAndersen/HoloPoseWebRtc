@@ -32,6 +32,8 @@ public class ControlScript : MonoBehaviour
     // i.e.: the trainee should have LocalStreamEnabled = true, and the mentor should have LocalStreamEnabled = false
     public bool LocalStreamEnabled = true;
 
+    public string PreferredVideoCodec = "VP8"; // options are "VP8" and "H264". Currently (as of 5/28/2018) we only support HoloLens pose on VP8.
+
     public uint LocalTextureWidth = 160;
     public uint LocalTextureHeight = 120;
 
@@ -50,6 +52,8 @@ public class ControlScript : MonoBehaviour
 
     public RectTransform PeerContent;
     public RectTransform SelfConnectedAsContent;
+
+    public Text PreferredCodecLabel;
 
     public GameObject TextItemPrefab;
 
@@ -659,8 +663,10 @@ public class ControlScript : MonoBehaviour
         System.Diagnostics.Debug.WriteLine("Selected audio codec - " + Conductor.Instance.AudioCodec.Name);
 
         var videoCodecList = Conductor.Instance.GetVideoCodecs();
-        //Conductor.Instance.VideoCodec = videoCodecList.FirstOrDefault(c => c.Name == "H264");
-        Conductor.Instance.VideoCodec = videoCodecList.FirstOrDefault(c => c.Name == "VP8");
+        Conductor.Instance.VideoCodec = videoCodecList.FirstOrDefault(c => c.Name == PreferredVideoCodec);
+        if (PreferredCodecLabel != null) {
+            PreferredCodecLabel.text = Conductor.Instance.VideoCodec.Name;
+        }
         System.Diagnostics.Debug.WriteLine("Selected video codec - " + Conductor.Instance.VideoCodec.Name);
 
         uint preferredWidth = 896;
