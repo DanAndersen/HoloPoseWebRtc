@@ -5,6 +5,7 @@ using UnityEngine.UI;
 using System.Collections.Generic;
 using UnityEngine.EventSystems;
 using UnityEngine.XR.WSA;
+using Newtonsoft.Json.Linq;
 
 #if !UNITY_EDITOR
 using Windows.UI.Core;
@@ -15,6 +16,8 @@ using System.Threading.Tasks;
 using HoloPoseClient.Signalling;
 //using PeerConnectionClient.Signalling;
 using Windows.ApplicationModel.Core;
+
+using Newtonsoft.Json.Linq;
 #endif
 
 public class ControlScript : MonoBehaviour
@@ -54,6 +57,8 @@ public class ControlScript : MonoBehaviour
     public RectTransform SelfConnectedAsContent;
 
     public Text PreferredCodecLabel;
+
+    public Text LastReceivedMessageLabel;
 
     public GameObject TextItemPrefab;
 
@@ -144,6 +149,9 @@ public class ControlScript : MonoBehaviour
         
 
         Debug.Log("setting up the rest of the conductor...");
+
+        Conductor.Instance.IncomingRawMessage += Conductor_IncomingRawMessage;
+
         Conductor.Instance.Initialized += Conductor_Initialized;
         Conductor.Instance.Initialize(CoreApplication.MainView.CoreWindow.Dispatcher);
         Conductor.Instance.EnableLogging(Conductor.LogLevel.Verbose);
@@ -268,7 +276,6 @@ public class ControlScript : MonoBehaviour
 
     private void Update()
     {
-#if !UNITY_EDITOR
         lock (this)
         {
             switch (status)
@@ -333,6 +340,7 @@ public class ControlScript : MonoBehaviour
                     break;
             }
 
+#if !UNITY_EDITOR
             while (commandQueue.Count != 0)
             {
                 Command command = commandQueue.First();
@@ -374,8 +382,18 @@ public class ControlScript : MonoBehaviour
                     RemoveRemotePeer(remotePeerName);
                 }
             }
-        }
 #endif
+        }
+    }
+
+    private void Conductor_IncomingRawMessage(string rawMessageString)
+    {
+        Debug.Log("incoming raw message from peer: " + rawMessageString);
+
+        if (LastReceivedMessageLabel != null)
+        {
+            LastReceivedMessageLabel.text = rawMessageString;
+        }
     }
 
     private void Conductor_Initialized(bool succeeded)
@@ -420,6 +438,37 @@ public class ControlScript : MonoBehaviour
             }
         }
 #endif
+    }
+
+    // Sends a test JSON message to the peer with which we are connected. Requires that we be both connected to the server and "in a call" with another peer before we can send.
+    public void OnSendTestMessageClick()
+    {
+        lock (this)
+        {
+            if (status == Status.InCall)
+            { 
+                // NOTE: this is the raw message to be sent
+                //
+                JObject messageToSend = new JObject();
+                messageToSend["hello"] = "world";
+                messageToSend["timestamp"] = Time.time;
+                //
+
+
+                // To handle the message properly, it should be wrapped in an outer JSON object where the "message" key points to your actual message.
+                JObject messageContainer = new JObject();
+                messageContainer["message"] = messageToSend;
+
+                string jsonString = messageContainer.ToString();
+#if !UNITY_EDITOR
+                Conductor.Instance.SendMessage(Windows.Data.Json.JsonObject.Parse(jsonString));
+#endif
+            }
+            else
+            {
+                Debug.LogError("attempted to send test message while not in call");
+            }
+        }
     }
 
     public void OnCallClick()

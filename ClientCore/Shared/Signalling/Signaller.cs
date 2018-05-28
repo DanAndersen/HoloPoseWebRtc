@@ -103,7 +103,5 @@ namespace HoloPoseClientCore.Signalling
         {
             OnServerConnectionFailure();
         }
-
-
     }
 }

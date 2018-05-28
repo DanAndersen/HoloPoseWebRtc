@@ -92,25 +92,23 @@ namespace HoloPoseClientCore.Signalling
                     JObject messageForConductor = (JObject)m["candidate"];
 
                     RaiseOnMessageFromPeer(fromLocalIntId, messageForConductor.ToString(Formatting.None));
-                }
-                else
+                } else if (m["presence"] != null)
                 {
-                    // the content of the message is unrecognized by the signaller and should be passed along as an incoming message
+                    // the presence messages are handled earlier in the signalling code, so at this point, do nothing with them.
+                } else if (m["message"] != null)
+                {
+                    JObject messageForConductor = (JObject)m["message"];
+
+                    RaiseOnMessageFromPeer(fromLocalIntId, messageForConductor.ToString(Formatting.None));
+                } else {
+                    // the content of the message is unrecognized by the signaller
                     Debug.WriteLine("TODO: incoming misc message of type " + m["type"]);
-
-                    // this can include things like "presence" messages which were already handled earlier
-
                 }
-
             } else
             {
                 Debug.WriteLine("received message from unknown sender " + fromServerId);
             }
-
-
-            
         }
-
 
         private Socket _socket;
 
@@ -391,13 +389,12 @@ namespace HoloPoseClientCore.Signalling
         private void SocketOnError()
         {
             Debug.WriteLine("TODO: SocketOnError");
-            throw new NotImplementedException();
+            RaiseOnServerConnectionFailure();
         }
 
         private void SocketOnConnecting()
         {
             Debug.WriteLine("TODO: SocketOnConnecting");
-            throw new NotImplementedException();
         }
 
         private void SocketOnDisconnect(object data)
@@ -414,13 +411,12 @@ namespace HoloPoseClientCore.Signalling
         private void SocketOnConnectFailed()
         {
             Debug.WriteLine("TODO: SocketOnConnectFailed");
-            throw new NotImplementedException();
+            RaiseOnServerConnectionFailure();
         }
 
         private void SocketOnReconnecting()
         {
             Debug.WriteLine("TODO: SocketOnReconnecting");
-            throw new NotImplementedException();
         }
 
         #endregion
@@ -611,10 +607,22 @@ namespace HoloPoseClientCore.Signalling
                     return true;
                 }
 
+                if (jsonMessage["message"] != null)
+                {
+                    // sending a misc. message to the peer.
 
+                    var msgObj = jsonMessage["message"]; // note that we go down one level here
 
+                    JObject parameters = new JObject();
+                    parameters["to"] = peerDataToJObject(recipientPeerData);
+                    parameters["type"] = "message";
+                    parameters["message"] = msgObj;
 
-                Debug.WriteLine("unknown type of message " + jsonMessage);
+                    send(parameters);
+                    return true;
+                }
+                
+                Debug.WriteLine("unknown message of type " + jsonMessage);
                 throw new NotImplementedException();
             }
             else

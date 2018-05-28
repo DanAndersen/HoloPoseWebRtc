@@ -1095,6 +1095,8 @@ namespace HoloPoseClient.Signalling
         {
         }
 
+        public event Action<string> IncomingRawMessage;
+
         /// <summary>
         /// Handler for Signaller's OnMessageFromPeer event.
         /// </summary>
@@ -1120,6 +1122,15 @@ namespace HoloPoseClient.Signalling
                 }
 
                 string type = jMessage.ContainsKey(kSessionDescriptionTypeName) ? jMessage.GetNamedString(kSessionDescriptionTypeName) : null;
+
+                // handle user-generated messages here
+                if (!IsNullOrEmpty(type) && type == "message")
+                {
+                    JsonObject rawMessage = jMessage.GetNamedObject("message");
+                    IncomingRawMessage?.Invoke(rawMessage.ToString());
+                    return;
+                }
+                
 #if ORTCLIB
                 bool created = false;
 #endif
@@ -1441,7 +1452,7 @@ namespace HoloPoseClient.Signalling
         /// Helper method to send a message to a peer.
         /// </summary>
         /// <param name="json">Message body.</param>
-        private void SendMessage(IJsonValue json)
+        public void SendMessage(IJsonValue json)
         {
             // Don't await, send it async.
             var task = _signaller.SendToPeer(_peerId, json);

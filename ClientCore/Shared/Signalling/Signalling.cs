@@ -26,7 +26,7 @@ namespace HoloPoseClient.Signalling
     public delegate void MessageFromPeerDelegate(int peer_id, string message);
     public delegate void MessageSentDelegate(int err);
     public delegate void ServerConnectionFailureDelegate();
-    
+
     /// <summary>
     /// Class providing helper functions for parsing responses and messages.
     /// </summary>
