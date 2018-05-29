@@ -92,12 +92,12 @@ namespace HoloPoseClientCore.Signalling
                     JObject messageForConductor = (JObject)m["candidate"];
 
                     RaiseOnMessageFromPeer(fromLocalIntId, messageForConductor.ToString(Formatting.None));
-                } else if (m["presence"] != null)
+                } else if (mType == "presence")
                 {
                     // the presence messages are handled earlier in the signalling code, so at this point, do nothing with them.
                 } else if (m["message"] != null)
                 {
-                    JObject messageForConductor = (JObject)m["message"];
+                    JObject messageForConductor = m; // send the entire raw message! the "message" format will route it correctly
 
                     RaiseOnMessageFromPeer(fromLocalIntId, messageForConductor.ToString(Formatting.None));
                 } else {
