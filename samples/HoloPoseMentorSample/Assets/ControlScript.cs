@@ -5,6 +5,7 @@ using UnityEngine.UI;
 using System.Collections.Generic;
 using UnityEngine.EventSystems;
 using UnityEngine.XR.WSA;
+using Newtonsoft.Json.Linq;
 
 #if !UNITY_EDITOR
 using Windows.UI.Core;
@@ -57,6 +58,9 @@ public class ControlScript : MonoBehaviour
     public Text PreferredCodecLabel;
 
     public Text LastReceivedMessageLabel;
+
+    public Text LastPeerPoseLabel;
+    public Text LastSelfPoseLabel;
 
     public GameObject TextItemPrefab;
 
@@ -118,8 +122,8 @@ public class ControlScript : MonoBehaviour
 
 
 
-
-
+        
+        
 
 #if !UNITY_EDITOR
         if (LocalStreamEnabled) {
@@ -149,6 +153,8 @@ public class ControlScript : MonoBehaviour
         Debug.Log("setting up the rest of the conductor...");
 
         Conductor.Instance.IncomingRawMessage += Conductor_IncomingRawMessage;
+        Conductor.Instance.OnSelfRawFrame += Conductor_OnSelfRawFrame;
+        Conductor.Instance.OnPeerRawFrame += Conductor_OnPeerRawFrame;
 
         Conductor.Instance.Initialized += Conductor_Initialized;
         Conductor.Instance.Initialize(CoreApplication.MainView.CoreWindow.Dispatcher);
@@ -174,6 +180,7 @@ public class ControlScript : MonoBehaviour
             }
         }
 
+        if (RemoteVideoImage != null)
         {
             Plugin.CreateRemoteMediaPlayback();
             IntPtr nativeTex = IntPtr.Zero;
@@ -194,7 +201,10 @@ public class ControlScript : MonoBehaviour
             Plugin.ReleaseLocalMediaPlayback();
         }
 
-        RemoteVideoImage.texture = null;
+        if (RemoteVideoImage != null)
+        {
+            RemoteVideoImage.texture = null;
+        }
         Plugin.ReleaseRemoteMediaPlayback();
     }
 
@@ -375,7 +385,7 @@ public class ControlScript : MonoBehaviour
                 }
                 else if (command.type == CommandType.RemoveRemotePeer)
                 {
-                    string remotePeerName = command.remotePeer.name;
+                    string remotePeerName = command.remotePeer.Name;
                     RemoveRemotePeer(remotePeerName);
                 }
             }
@@ -383,14 +393,53 @@ public class ControlScript : MonoBehaviour
         }
     }
 
+    // fired whenever we get a video frame from the remote peer.
+    // if there is pose data, posXYZ and rotXYZW will have non-zero values.
+    private void Conductor_OnPeerRawFrame(uint width, uint height,
+            byte[] yPlane, uint yPitch, byte[] vPlane, uint vPitch, byte[] uPlane, uint uPitch,
+            float posX, float posY, float posZ, float rotX, float rotY, float rotZ, float rotW)
+    {
+        UnityEngine.WSA.Application.InvokeOnAppThread(() =>
+        {
+            //Set property on UI thread
+            //Debug.Log("ControlScript: OnPeerRawFrame " + width + " " + height + " " + posX + " " + posY + " " + posZ + " " + rotX + " " + rotY + " " + rotZ + " " + rotW);
+
+            if (LastPeerPoseLabel != null)
+            {
+                LastPeerPoseLabel.text = posX + " " + posY + " " + posZ + "\n" + rotX + " " + rotY + " " + rotZ + " " + rotW;
+            }
+        }, false);
+    }
+
+    // fired whenever we encode one of our own video frames before sending it to the remote peer.
+    // if there is pose data, posXYZ and rotXYZW will have non-zero values.
+    private void Conductor_OnSelfRawFrame(uint width, uint height,
+            byte[] yPlane, uint yPitch, byte[] vPlane, uint vPitch, byte[] uPlane, uint uPitch,
+            float posX, float posY, float posZ, float rotX, float rotY, float rotZ, float rotW)
+    {
+        UnityEngine.WSA.Application.InvokeOnAppThread(() =>
+        {
+            //Set property on UI thread
+            //Debug.Log("ControlScript: OnSelfRawFrame " + width + " " + height + " " + posX + " " + posY + " " + posZ + " " + rotX + " " + rotY + " " + rotZ + " " + rotW);
+
+            if (LastSelfPoseLabel != null)
+            {
+                LastSelfPoseLabel.text = posX + " " + posY + " " + posZ + "\n" + rotX + " " + rotY + " " + rotZ + " " + rotW;
+            }
+        }, false);
+    }
+
     private void Conductor_IncomingRawMessage(string rawMessageString)
     {
-        Debug.Log("incoming raw message from peer: " + rawMessageString);
-
-        if (LastReceivedMessageLabel != null)
+        UnityEngine.WSA.Application.InvokeOnAppThread(() =>
         {
-            LastReceivedMessageLabel.text = rawMessageString;
-        }
+            Debug.Log("incoming raw message from peer: " + rawMessageString);
+
+            if (LastReceivedMessageLabel != null)
+            {
+                LastReceivedMessageLabel.text = rawMessageString;
+            }
+        }, false);
     }
 
     private void Conductor_Initialized(bool succeeded)
@@ -428,6 +477,7 @@ public class ControlScript : MonoBehaviour
                 status = Status.Disconnecting;
                 selectedPeerIndex = -1;
                 PeerContent.DetachChildren();
+                SelfConnectedAsContent.DetachChildren();
             }
             else
             {
@@ -436,7 +486,7 @@ public class ControlScript : MonoBehaviour
         }
 #endif
     }
-    
+
     // Sends a test JSON message to the peer with which we are connected. Requires that we be both connected to the server and "in a call" with another peer before we can send.
     public void OnSendTestMessageClick()
     {
@@ -444,16 +494,23 @@ public class ControlScript : MonoBehaviour
         {
             if (status == Status.InCall)
             {
+                // NOTE: this is the raw message to be sent
+                //
+                JObject messageToSend = new JObject();
+                messageToSend["hello"] = "world";
+                messageToSend["timestamp"] = Time.time;
+                //
 
 
+                // To handle the message properly, it should be wrapped in an outer JSON object where the "message" key points to your actual message.
+                JObject messageContainer = new JObject();
+                messageContainer["message"] = messageToSend;
+
+                string jsonString = messageContainer.ToString();
+
+                Debug.Log("sending test message " + jsonString);
 #if !UNITY_EDITOR
-                var json = new Windows.Data.Json.JsonObject
-                {
-                    { "hello", "world" },
-                    { "timestamp", Time.time }
-                };
-
-                Conductor.Instance.SendMessage(json);
+                Conductor.Instance.SendMessage(Windows.Data.Json.JsonObject.Parse(jsonString));
 #endif
             }
             else
@@ -462,7 +519,7 @@ public class ControlScript : MonoBehaviour
             }
         }
     }
-    
+
     public void OnCallClick()
     {
 #if !UNITY_EDITOR
@@ -472,12 +529,33 @@ public class ControlScript : MonoBehaviour
             {
                 if (selectedPeerIndex == -1)
                     return;
+
+                Debug.Log("selectedPeerIndex: " + selectedPeerIndex);
+                string selectedRemotePeerName = PeerContent.GetChild(selectedPeerIndex).GetComponent<Text>().text;
+                Debug.Log("selectedRemotePeerName: " + selectedRemotePeerName);
+
                 new Task(() =>
                 {
-                    Conductor.Peer conductorPeer = Conductor.Instance.GetPeers()[selectedPeerIndex];
-                    if (conductorPeer != null)
+                    // given the selectedPeerIndex, find which remote peer that matches. 
+                    // Note: it's not just that index in Conductor.Instance.GetPeers() because that list contains both remote peers and ourselves.
+                    Conductor.Peer selectedConductorPeer = null;
+
+                    var conductorPeers = Conductor.Instance.GetPeers();
+                    foreach (var conductorPeer in conductorPeers)
                     {
-                        Conductor.Instance.ConnectToPeer(conductorPeer);
+                        if (conductorPeer.Name == selectedRemotePeerName)
+                        {
+                            selectedConductorPeer = conductorPeer;
+                            break;
+                        }
+                    }
+
+                    Debug.Log("selectedConductorPeer: " + selectedConductorPeer.Name);
+                    Debug.Log("going to try to connect to peer");
+
+                    if (selectedConductorPeer != null)
+                    {
+                        Conductor.Instance.ConnectToPeer(selectedConductorPeer);
                     }
                 }).Start();
                 status = Status.Calling;
@@ -705,9 +783,13 @@ public class ControlScript : MonoBehaviour
 
         var videoCodecList = Conductor.Instance.GetVideoCodecs();
         Conductor.Instance.VideoCodec = videoCodecList.FirstOrDefault(c => c.Name == PreferredVideoCodec);
-        if (PreferredCodecLabel != null) {
+
+        UnityEngine.WSA.Application.InvokeOnAppThread(() =>
+        {
+            //Set property on UI thread
             PreferredCodecLabel.text = Conductor.Instance.VideoCodec.Name;
-        }
+        }, false);
+
         System.Diagnostics.Debug.WriteLine("Selected video codec - " + Conductor.Instance.VideoCodec.Name);
 
         uint preferredWidth = 896;

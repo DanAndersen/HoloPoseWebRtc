@@ -601,12 +601,17 @@ namespace HoloPoseClient.Signalling
             _peerRawVideoSource.OnRawVideoFrame += _peerRawVideoSource_OnRawVideoFrame;
         }
 
+        public event Action<uint, uint,
+            byte[], uint, byte[], uint, byte[], uint,
+            float, float, float, float, float, float, float> OnPeerRawFrame;
+
         private void _peerRawVideoSource_OnRawVideoFrame(
             uint width, uint height, 
             byte[] yPlane, uint yPitch, byte[] vPlane, uint vPitch, byte[] uPlane, uint uPitch, 
             float posX, float posY, float posZ, float rotX, float rotY, float rotZ, float rotW)
         {
-            Debug.WriteLine("Conductor: _peerRawVideoSource_OnRawVideoFrame " + width + " " + height + " " + posX + " " + posY + " " + posZ + " " + rotX + " " + rotY + " " + rotZ + " " + rotW);
+            //Debug.WriteLine("Conductor: _peerRawVideoSource_OnRawVideoFrame " + width + " " + height + " " + posX + " " + posY + " " + posZ + " " + rotX + " " + rotY + " " + rotZ + " " + rotW);
+            OnPeerRawFrame?.Invoke(width, height, yPlane, yPitch, vPlane, vPitch, uPlane, uPitch, posX, posY, posZ, rotX, rotY, rotZ, rotW);
         }
 
         private void DestroyPeerVideoSources()
@@ -626,12 +631,17 @@ namespace HoloPoseClient.Signalling
             _selfRawVideoSource.OnRawVideoFrame += _selfRawVideoSource_OnRawVideoFrame;
         }
 
+        public event Action<uint, uint,
+            byte[], uint, byte[], uint, byte[], uint,
+            float, float, float, float, float, float, float> OnSelfRawFrame;
+
         private void _selfRawVideoSource_OnRawVideoFrame(
             uint width, uint height,
             byte[] yPlane, uint yPitch, byte[] vPlane, uint vPitch, byte[] uPlane, uint uPitch,
             float posX, float posY, float posZ, float rotX, float rotY, float rotZ, float rotW)
         {
             //Debug.WriteLine("Conductor: _selfRawVideoSource_OnRawVideoFrame " + width + " " + height + " " + posX + " " + posY + " " + posZ + " " + rotX + " " + rotY + " " + rotZ + " " + rotW);
+            OnSelfRawFrame?.Invoke(width, height, yPlane, yPitch, vPlane, vPitch, uPlane, uPitch, posX, posY, posZ, rotX, rotY, rotZ, rotW);
         }
 
         private void DestroySelfVideoSources()
