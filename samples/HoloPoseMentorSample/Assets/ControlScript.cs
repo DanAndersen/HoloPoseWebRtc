@@ -43,7 +43,7 @@ public class ControlScript : MonoBehaviour
     public uint RemoteTextureHeight = 480;
 
     public RawImage LocalVideoImage;
-    public RawImage RemoteVideoImage;
+    public List<RawImage> RemoteVideoImages;
 
     public InputField ServerAddressInputField;
     public InputField ServerPortInputField;
@@ -107,23 +107,6 @@ public class ControlScript : MonoBehaviour
 
     void Start()
     {
-        /*
-        Debug.Log("NOTE: creating some mock remote peers to test UI");
-        for (int i = 0; i < 5; i++)
-        {
-            string mockName = "mock-peer-" + UnityEngine.Random.value;
-            if (i == 0)
-            {
-                mockName = ClientName; // testing to make sure we can't accidentally call ourselves
-            }
-            AddRemotePeer(mockName);
-        }
-        */
-
-
-
-        
-        
 
 #if !UNITY_EDITOR
         if (LocalStreamEnabled) {
@@ -180,13 +163,17 @@ public class ControlScript : MonoBehaviour
             }
         }
 
-        if (RemoteVideoImage != null)
+        for (int i = 0; i < RemoteVideoImages.Count; i++)
         {
-            Plugin.CreateRemoteMediaPlayback();
-            IntPtr nativeTex = IntPtr.Zero;
-            Plugin.GetRemotePrimaryTexture(RemoteTextureWidth, RemoteTextureHeight, out nativeTex);
-            var primaryPlaybackTexture = Texture2D.CreateExternalTexture((int)RemoteTextureWidth, (int)RemoteTextureHeight, TextureFormat.BGRA32, false, false, nativeTex);
-            RemoteVideoImage.texture = primaryPlaybackTexture;
+            RawImage currentRemoteVideoImage = RemoteVideoImages[i];
+            if (currentRemoteVideoImage != null)
+            {
+                Plugin.CreateRemoteMediaPlayback();
+                IntPtr nativeTex = IntPtr.Zero;
+                Plugin.GetRemotePrimaryTexture(RemoteTextureWidth, RemoteTextureHeight, out nativeTex);
+                var primaryPlaybackTexture = Texture2D.CreateExternalTexture((int)RemoteTextureWidth, (int)RemoteTextureHeight, TextureFormat.BGRA32, false, false, nativeTex);
+                currentRemoteVideoImage.texture = primaryPlaybackTexture;
+            }
         }
     }
 
@@ -201,11 +188,15 @@ public class ControlScript : MonoBehaviour
             Plugin.ReleaseLocalMediaPlayback();
         }
 
-        if (RemoteVideoImage != null)
+        for (int i = 0; i < RemoteVideoImages.Count; i++)
         {
-            RemoteVideoImage.texture = null;
+            RawImage currentRemoteVideoImage = RemoteVideoImages[i];
+            if (currentRemoteVideoImage != null)
+            {
+                currentRemoteVideoImage.texture = null;
+            }
+            Plugin.ReleaseRemoteMediaPlayback();
         }
-        Plugin.ReleaseRemoteMediaPlayback();
     }
 
 

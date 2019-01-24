@@ -96,6 +96,7 @@ namespace PeerConnectionClient
                 Window.Current.SizeChanged += onResizeHandler;
             }
             PeerVideo.Visibility = Visibility.Collapsed;
+            PeerVideo2.Visibility = Visibility.Collapsed;
             SelfVideo.Visibility = Visibility.Collapsed;
 #else
             DXSwapChainPanel.Visibility = Visibility.Collapsed;
@@ -116,6 +117,7 @@ namespace PeerConnectionClient
             OnResize();
 #else
             _mainViewModel.PeerVideo = PeerVideo;
+            _mainViewModel.PeerVideo2 = PeerVideo2;
             _mainViewModel.SelfVideo = SelfVideo;
 #endif
 

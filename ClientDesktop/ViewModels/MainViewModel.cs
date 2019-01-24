@@ -244,9 +244,13 @@ namespace PeerConnectionClient.ViewModels
                     {
                         SelfVideoFps = frameRate;
                     }
-                    else if (id == "PEER")
+                    else if (id == "PEER_star-trainee" || id == "PEER_star-trainee2")
                     {
+                        Debug.WriteLine("TODO: hardcoded media id to PEER_star-trainee");
                         PeerVideoFps = frameRate;
+                    } else
+                    {
+                        throw new Exception("unknown id: " + id);
                     }
                 });
             };
@@ -261,10 +265,15 @@ namespace PeerConnectionClient.ViewModels
                         SelfHeight = height.ToString();
                         SelfWidth = width.ToString();
                     }
-                    else if (id == "PEER")
+                    else if (id == "PEER_star-trainee" || id == "PEER_star-trainee2")
                     {
+                        Debug.WriteLine("TODO: hardcoded media id to PEER_star-trainee");
                         PeerHeight = height.ToString();
                         PeerWidth = width.ToString();
+                    }
+                    else
+                    {
+                        throw new Exception("unknown id: " + id);
                     }
                 });
             };
@@ -339,8 +348,8 @@ namespace PeerConnectionClient.ViewModels
             Conductor.Instance.OnRemoveTrack += Conductor_OnRemoveTrack;
             Conductor.Instance.OnAddLocalStream += Conductor_OnAddLocalStream;
 #else
-            Conductor.Instance.OnAddRemoteStream += Conductor_OnAddRemoteStream;
-            Conductor.Instance.OnRemoveRemoteStream += Conductor_OnRemoveRemoteStream;
+            Conductor.Instance.OnAddRemoteStream += (s) => { Conductor_OnAddRemoteStream(); };
+            Conductor.Instance.OnRemoveRemoteStream += (s) => { Conductor_OnRemoveRemoteStream(); };
             Conductor.Instance.OnAddLocalStream += Conductor_OnAddLocalStream;
 
             Conductor.Instance.OnConnectionHealthStats += Conductor_OnPeerConnectionHealthStats;
@@ -1922,12 +1931,32 @@ namespace PeerConnectionClient.ViewModels
             set
             {
                 _peerVideo = value;
-                Conductor.Instance.PeerVideo = _peerVideo;
+
+                Console.WriteLine("TODO: setting PeerVideo to star-trainee specifically");
+
+                Conductor.Instance.PeerVideos["star-trainee"] = _peerVideo;
             }
         }
+
+
+        private MediaElement _peerVideo2;
+
+        public MediaElement PeerVideo2
+        {
+            get { return _peerVideo2; }
+            set
+            {
+                _peerVideo2 = value;
+
+                Console.WriteLine("TODO: setting PeerVideo2 to star-trainee2 specifically");
+
+                Conductor.Instance.PeerVideos["star-trainee2"] = _peerVideo2;
+            }
+        }
+
 #endif
 
-#endregion
+        #endregion
 
         /// <summary>
         /// Logic to determine if the server is configured.
@@ -2000,7 +2029,9 @@ namespace PeerConnectionClient.ViewModels
         /// <param name="obj">The sender object.</param>
         private void DisconnectFromPeerCommandExecute(object obj)
         {
-            new Task(() => { var task = Conductor.Instance.DisconnectFromPeer(); }).Start();
+            Console.WriteLine("TODO: setting Disconnect from star-trainee specifically");
+
+            new Task(() => { var task = Conductor.Instance.DisconnectFromPeer("star-trainee"); }).Start();
         }
 
         /// <summary>
@@ -2477,7 +2508,7 @@ namespace PeerConnectionClient.ViewModels
 
             if (IsConnectedToPeer)
             {
-                await Conductor.Instance.DisconnectFromPeer();
+                Conductor.Instance.CloseAllPeerConnections();
             }
             if (IsConnected)
             {

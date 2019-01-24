@@ -149,14 +149,19 @@ namespace HoloPoseClient.Signalling
         /// </summary>
         public Signaller Signaller => _signaller;
 
-        private MediaVideoTrack _peerVideoTrack;
+        private Dictionary<string, MediaVideoTrack> _peerVideoTracks = new Dictionary<string, MediaVideoTrack>();
+        
         private MediaVideoTrack _selfVideoTrack;
 
-        public MediaElement SelfVideo { get; set; }
-        public MediaElement PeerVideo { get; set; }
+        public Dictionary<string, MediaElement> PeerVideos = new Dictionary<string, MediaElement>();
 
-        private RawVideoSource _peerRawVideoSource;
+        public MediaElement SelfVideo { get; set; }
+
+        private Dictionary<string, RawVideoSource> _peerRawVideoSources = new Dictionary<string, RawVideoSource>();
+        
         private RawVideoSource _selfRawVideoSource;
+
+        private Dictionary<string, RTCPeerConnection> _peerConnections = new Dictionary<string, RTCPeerConnection>();
 
         /// <summary>
         /// If true, offer one's own video when receiving an offer from a remote peer. If false, we accept their video but don't try to send any of our video.
@@ -187,7 +192,7 @@ namespace HoloPoseClient.Signalling
 #if ORTCLIB
         private static readonly string kSessionDescriptionJsonName = "session";
 #endif
-        RTCPeerConnection _peerConnection;
+        
         readonly Media _media;
 
         /// <summary>
@@ -195,21 +200,26 @@ namespace HoloPoseClient.Signalling
         /// </summary>
         public Media Media => _media;
 
-        private List<Peer> _peers = new List<Peer>();
-        private Peer _peer;
+        private Dictionary<string, Peer> _onlinePeers = new Dictionary<string, Peer>();
+        private Dictionary<string, Peer> _connectedPeers = new Dictionary<string, Peer>();
+
+
+        private Dictionary<string, int> _connectedPeerIds = new Dictionary<string, int>();
+        
         private MediaStream _mediaStream;
         readonly List<RTCIceServer> _iceServers;
 
         private CoreDispatcher _uiDispatcher;
 
-        private int _peerId = -1;
+
+        
         protected bool VideoEnabled = true;
         protected bool AudioEnabled = true;
 
         public bool ConstraintAudioEnabled = true;
         public bool ConstraintVideoEnabled = true;
         
-        protected string SessionId;
+        //protected string SessionId;
 
         bool _etwStatsEnabled;
 
@@ -227,10 +237,15 @@ namespace HoloPoseClient.Signalling
             {
                 _etwStatsEnabled = value;
 #if !ORTCLIB
-                if (_peerConnection != null)
+                foreach (var peerConnection in _peerConnections.Values)
                 {
-                    _peerConnection.EtwStatsEnabled = value;
+                    if (peerConnection != null)
+                    {
+                        peerConnection.EtwStatsEnabled = value;
+                    }
                 }
+
+                
 #endif
             }
         }
@@ -556,10 +571,14 @@ namespace HoloPoseClient.Signalling
             {
                 _peerConnectionStatsEnabled = value;
 #if !ORTCLIB
-                if (_peerConnection != null)
+                foreach (var peerConnection in _peerConnections.Values)
                 {
-                    _peerConnection.ConnectionHealthStatsEnabled = value;
+                    if (peerConnection != null)
+                    {
+                        peerConnection.ConnectionHealthStatsEnabled = value;
+                    }
                 }
+
 #endif
             }
         }
@@ -593,34 +612,28 @@ namespace HoloPoseClient.Signalling
 #endif
             }
         }
-
-        private void SetupPeerVideoFrameCallbacks(MediaVideoTrack peerVideoTrack)
-        {
-            Debug.WriteLine("Conductor: SetupPeerVideoFrameCallbacks");
-            _peerRawVideoSource = _media.CreateRawVideoSource(peerVideoTrack);
-            _peerRawVideoSource.OnRawVideoFrame += _peerRawVideoSource_OnRawVideoFrame;
-        }
-
-        public event Action<uint, uint,
+        
+        public event Action<string, uint, uint,
             byte[], uint, byte[], uint, byte[], uint,
             float, float, float, float, float, float, float> OnPeerRawFrame;
 
-        private void _peerRawVideoSource_OnRawVideoFrame(
+        private void _peerRawVideoSource_OnRawVideoFrame(string peerName,
             uint width, uint height, 
             byte[] yPlane, uint yPitch, byte[] vPlane, uint vPitch, byte[] uPlane, uint uPitch, 
             float posX, float posY, float posZ, float rotX, float rotY, float rotZ, float rotW)
         {
             //Debug.WriteLine("Conductor: _peerRawVideoSource_OnRawVideoFrame " + width + " " + height + " " + posX + " " + posY + " " + posZ + " " + rotX + " " + rotY + " " + rotZ + " " + rotW);
-            OnPeerRawFrame?.Invoke(width, height, yPlane, yPitch, vPlane, vPitch, uPlane, uPitch, posX, posY, posZ, rotX, rotY, rotZ, rotW);
+            OnPeerRawFrame?.Invoke(peerName, width, height, yPlane, yPitch, vPlane, vPitch, uPlane, uPitch, posX, posY, posZ, rotX, rotY, rotZ, rotW);
         }
 
-        private void DestroyPeerVideoSources()
+        private void DestroyPeerVideoSources(string peerName)
         {
             Debug.WriteLine("Conductor: DestroyPeerVideoSources");
-            if (_peerRawVideoSource != null)
+
+            if (_peerRawVideoSources.ContainsKey(peerName))
             {
-                _peerRawVideoSource.Dispose();
-                _peerRawVideoSource = null;
+                _peerRawVideoSources[peerName].Dispose();
+                _peerRawVideoSources.Remove(peerName);
             }
         }
 
@@ -658,9 +671,9 @@ namespace HoloPoseClient.Signalling
         /// Creates a peer connection.
         /// </summary>
         /// <returns>True if connection to a peer is successfully created.</returns>
-        private async Task<bool> CreatePeerConnection(CancellationToken cancelationToken)
+        private async Task<bool> CreatePeerConnection(string peerName, CancellationToken cancelationToken)
         {
-            Debug.Assert(_peerConnection == null);
+            Debug.Assert(!_peerConnections.ContainsKey(peerName));
             if (cancelationToken.IsCancellationRequested)
             {
                 return false;
@@ -682,14 +695,14 @@ namespace HoloPoseClient.Signalling
             };
 
             Debug.WriteLine("Conductor: Creating peer connection.");
-            _peerConnection = new RTCPeerConnection(config);
+            _peerConnections[peerName] = new RTCPeerConnection(config);
 
-            if (_peerConnection == null)
+            if (_peerConnections[peerName] == null)
                 throw new NullReferenceException("Peer connection is not created.");
 
 #if !ORTCLIB
-            _peerConnection.EtwStatsEnabled = _etwStatsEnabled;
-            _peerConnection.ConnectionHealthStatsEnabled = _peerConnectionStatsEnabled;
+            _peerConnections[peerName].EtwStatsEnabled = _etwStatsEnabled;
+            _peerConnections[peerName].ConnectionHealthStatsEnabled = _peerConnectionStatsEnabled;
 #endif
             if (cancelationToken.IsCancellationRequested)
             {
@@ -700,15 +713,24 @@ namespace HoloPoseClient.Signalling
 #endif
             OnPeerConnectionCreated?.Invoke();
 
-            _peerConnection.OnIceCandidate += PeerConnection_OnIceCandidate;
+            _peerConnections[peerName].OnIceCandidate += (RTCPeerConnectionIceEvent evt) =>
+            {
+                PeerConnection_OnIceCandidate(peerName, evt);
+            };
 #if ORTCLIB
-            _peerConnection.OnTrack += PeerConnection_OnAddTrack;
-            _peerConnection.OnTrackGone += PeerConnection_OnRemoveTrack;
-            _peerConnection.OnIceConnectionStateChange += () => { Debug.WriteLine("Conductor: Ice connection state change, state=" + (null != _peerConnection ? _peerConnection.IceConnectionState.ToString() : "closed")); };
+            _peerConnections[peerName].OnTrack += PeerConnection_OnAddTrack;
+            _peerConnections[peerName].OnTrackGone += PeerConnection_OnRemoveTrack;
+            _peerConnections[peerName].OnIceConnectionStateChange += () => { Debug.WriteLine("Conductor: Ice connection state change, state=" + (null != _peerConnection ? _peerConnection.IceConnectionState.ToString() : "closed")); };
 #else
-            _peerConnection.OnAddStream += PeerConnection_OnAddStream;
-            _peerConnection.OnRemoveStream += PeerConnection_OnRemoveStream;
-            _peerConnection.OnConnectionHealthStats += PeerConnection_OnConnectionHealthStats;
+            _peerConnections[peerName].OnAddStream += (MediaStreamEvent evt) =>
+            {
+                PeerConnection_OnAddStream(peerName, evt);
+            };
+            _peerConnections[peerName].OnRemoveStream += (MediaStreamEvent evt) =>
+            {
+                PeerConnection_OnRemoveStream(peerName, evt);
+            };
+            _peerConnections[peerName].OnConnectionHealthStats += PeerConnection_OnConnectionHealthStats;
 #endif
 
             
@@ -774,7 +796,7 @@ namespace HoloPoseClient.Signalling
 
 #if !ORTCLIB
                 Debug.WriteLine("Conductor: Adding local media stream.");
-                _peerConnection.AddStream(_mediaStream);
+                _peerConnections[peerName].AddStream(_mediaStream);
 #endif
                 _selfVideoTrack = _mediaStream.GetVideoTracks().FirstOrDefault();
                 if (_selfVideoTrack != null)
@@ -816,13 +838,16 @@ namespace HoloPoseClient.Signalling
         /// <summary>
         /// Closes a peer connection.
         /// </summary>
-        private void ClosePeerConnection()
+        private void ClosePeerConnection(string peerName)
         {
             lock (MediaLock)
             {
-                if (_peerConnection != null)
+                RTCPeerConnection peerConnection = null;
+                _peerConnections.TryGetValue(peerName, out peerConnection);
+
+                if (peerConnection != null)
                 {
-                    _peerId = -1;
+                    _connectedPeerIds.Remove(peerName);
                     if (_mediaStream != null)
                     {
                         foreach (var track in _mediaStream.GetTracks())
@@ -847,25 +872,25 @@ namespace HoloPoseClient.Signalling
 #elif !UNITY
                     _uiDispatcher.RunAsync(CoreDispatcherPriority.Normal, new DispatchedHandler(() =>
                     {
-                        Conductor.Instance.Media.RemoveVideoTrackMediaElementPair(_peerVideoTrack);
+                        Conductor.Instance.Media.RemoveVideoTrackMediaElementPair(_peerVideoTracks[peerName]);
                         Conductor.Instance.Media.RemoveVideoTrackMediaElementPair(_selfVideoTrack);
                     })).AsTask().Wait();
 #endif
-                    DestroyPeerVideoSources();
+                    DestroyPeerVideoSources(peerName);
                     DestroySelfVideoSources();
 
-                    _peerVideoTrack = null;
+                    _peerVideoTracks.Remove(peerName);
                     _selfVideoTrack = null;
 
                     OnPeerConnectionClosed?.Invoke();
 
-                    _peerConnection.Close(); // Slow, so do this after UI updated and camera turned off
+                    peerConnection.Close(); // Slow, so do this after UI updated and camera turned off
 
 #if ORTCLIB
                     SessionId = null;
                     OrtcStatsManager.Instance.CallEnded();
 #endif
-                    _peerConnection = null;
+                    _peerConnections.Remove(peerName);
 
                     OnReadyToConnect?.Invoke();
 
@@ -879,24 +904,24 @@ namespace HoloPoseClient.Signalling
             return Media.CreateMedia().CreateMediaStreamSource(_selfVideoTrack, type, "SELF");
         }
 
-        public IMediaSource CreateRemoteMediaStreamSource(String type)
+        public IMediaSource CreateRemoteMediaStreamSource(string peerName, String type)
         {
-            return Media.CreateMedia().CreateMediaStreamSource(_peerVideoTrack, type, "PEER");
+            return Media.CreateMedia().CreateMediaStreamSource(_peerVideoTracks[peerName], type, GetPeerLabel(peerName));
         }
 
         public void AddPeer(Peer peer)
         {
-            _peers.Add(peer);
+            _onlinePeers[peer.Name] = peer;
         }
 
         public void RemovePeer(Peer peer)
         {
-            _peers.RemoveAll(p => p.Id == peer.Id);
+            _onlinePeers.Remove(peer.Name);
         }
 
         public List<Peer> GetPeers()
         {
-            return new List<Peer>(_peers);
+            return _onlinePeers.Values.ToList<Peer>();
         }
 
         /// <summary>
@@ -904,7 +929,7 @@ namespace HoloPoseClient.Signalling
         /// This candidate needs to be sent to the other peer.
         /// </summary>
         /// <param name="evt">Details about RTC Peer Connection Ice event.</param>
-        private void PeerConnection_OnIceCandidate(RTCPeerConnectionIceEvent evt)
+        private void PeerConnection_OnIceCandidate(string peerName, RTCPeerConnectionIceEvent evt)
         {
             if (evt.Candidate == null) // relevant: GlobalObserver::OnIceComplete in Org.WebRtc
             {
@@ -930,7 +955,12 @@ namespace HoloPoseClient.Signalling
                 };
             }
             Debug.WriteLine("Conductor: Sending ice candidate.\n" + json.Stringify());
-            SendMessage(json);
+            SendMessage(peerName, json);
+        }
+
+        private string GetPeerLabel(string peerName)
+        {
+            return "PEER_" + peerName;
         }
 
 #if ORTCLIB
@@ -955,12 +985,13 @@ namespace HoloPoseClient.Signalling
         /// <summary>
         /// Invoked when the remote peer added a media stream to the peer connection.
         /// </summary>
-        public event Action OnAddRemoteStream;
-        private void PeerConnection_OnAddStream(MediaStreamEvent evt)
+        public event Action<string> OnAddRemoteStream;
+        private void PeerConnection_OnAddStream(string peerName, MediaStreamEvent evt)
         {
             Debug.WriteLine("Conductor: PeerConnection_OnAddStream");
-            _peerVideoTrack = evt.Stream.GetVideoTracks().FirstOrDefault();
-            if (_peerVideoTrack != null)
+
+            _peerVideoTracks[peerName] = evt.Stream.GetVideoTracks().FirstOrDefault();
+            if (_peerVideoTracks[peerName] != null)
             {
 #if UNITY_XAML
                 if (UnityPlayer.AppCallbacks.Instance.IsInitialized())
@@ -970,29 +1001,39 @@ namespace HoloPoseClient.Signalling
                         UnityEngine.GameObject go = UnityEngine.GameObject.Find("Control");
                         if (VideoCodec.Name == "H264")
                         {
-                            go.GetComponent<ControlScript>().CreateRemoteMediaStreamSource(_peerVideoTrack, "H264", "PEER");
+                            go.GetComponent<ControlScript>().CreateRemoteMediaStreamSource(_peerVideoTrack, "H264", GetPeerLabel(peerName));
                         }
                         else
                         {
-                            go.GetComponent<ControlScript>().CreateRemoteMediaStreamSource(_peerVideoTrack, "I420", "PEER");
+                            go.GetComponent<ControlScript>().CreateRemoteMediaStreamSource(_peerVideoTrack, "I420", GetPeerLabel(peerName));
                         }
                     }
                     ), false);
                 }
 #elif !UNITY
-                _media.AddVideoTrackMediaElementPair(_peerVideoTrack, PeerVideo, "PEER");
+                _media.AddVideoTrackMediaElementPair(_peerVideoTracks[peerName], PeerVideos[peerName], GetPeerLabel(peerName));
 #endif
-                SetupPeerVideoFrameCallbacks(_peerVideoTrack);
+
+                Debug.WriteLine("Conductor: SetupPeerVideoFrameCallbacks");
+                _peerRawVideoSources[peerName] = _media.CreateRawVideoSource(_peerVideoTracks[peerName]);
+                _peerRawVideoSources[peerName].OnRawVideoFrame += (uint width, uint height,
+                    byte[] yPlane, uint yPitch, byte[] vPlane, uint vPitch, byte[] uPlane, uint uPitch,
+                    float posX, float posY, float posZ, float rotX, float rotY, float rotZ, float rotW) =>
+                {
+                    _peerRawVideoSource_OnRawVideoFrame(peerName, width, height,
+                    yPlane, yPitch, vPlane, vPitch, uPlane, uPitch,
+                    posX, posY, posZ, rotX, rotY, rotZ, rotW);
+                };
             }
 
-            OnAddRemoteStream?.Invoke();
+            OnAddRemoteStream?.Invoke(peerName);
         }
 
         /// <summary>
         /// Invoked when the remote peer removed a media stream from the peer connection.
         /// </summary>
-        public event Action OnRemoveRemoteStream;
-        private void PeerConnection_OnRemoveStream(MediaStreamEvent evt)
+        public event Action<string> OnRemoveRemoteStream;
+        private void PeerConnection_OnRemoveStream(string peerName, MediaStreamEvent evt)
         {
 #if UNITY_XAML
             if (UnityPlayer.AppCallbacks.Instance.IsInitialized())
@@ -1005,10 +1046,10 @@ namespace HoloPoseClient.Signalling
                 ), false);
             }
 #elif !UNITY
-            _media.RemoveVideoTrackMediaElementPair(_peerVideoTrack);
+            _media.RemoveVideoTrackMediaElementPair(_peerVideoTracks[peerName]);
 #endif
-            DestroyPeerVideoSources();
-            OnRemoveRemoteStream?.Invoke();
+            DestroyPeerVideoSources(peerName);
+            OnRemoveRemoteStream?.Invoke(peerName);
         }
 
         /// <summary>
@@ -1062,10 +1103,20 @@ namespace HoloPoseClient.Signalling
         /// <param name="peerId">ID of the peer to hung up the call with.</param>
         void Signaller_OnPeerHangup(int peerId)
         {
-            if (peerId != _peerId) return;
+            string peerName = null;
+            foreach (var kv in _connectedPeerIds)
+            {
+                if (kv.Value == peerId)
+                {
+                    peerName = kv.Key;
+                    break;
+                }
+            }
+
+            if (peerName == null) return;
 
             Debug.WriteLine("Conductor: Our peer hung up.");
-            ClosePeerConnection();
+            ClosePeerConnection(peerName);
         }
 
         /// <summary>
@@ -1089,11 +1140,21 @@ namespace HoloPoseClient.Signalling
         /// <param name="peerId">ID of disconnected peer.</param>
         private void Signaller_OnPeerDisconnected(int peerId)
         {
+            string peerName = null;
+            foreach (var kv in _connectedPeerIds)
+            {
+                if (kv.Value == peerId)
+                {
+                    peerName = kv.Key;
+                    break;
+                }
+            }
+            
             // is the same peer or peer_id does not exist (0) in case of 500 Error
-            if (peerId != _peerId && peerId != 0) return;
+            if (peerName == null && peerId != 0) return;
 
             Debug.WriteLine("Conductor: Our peer disconnected.");
-            ClosePeerConnection();
+            ClosePeerConnection(peerName);
         }
 
         /// <summary>
@@ -1116,15 +1177,22 @@ namespace HoloPoseClient.Signalling
         {
             Task.Run(async () =>
             {
-                Debug.Assert(_peerId == peerId || _peerId == -1);
-                Debug.Assert(message.Length > 0);
+                Debug.WriteLine("Signaller_OnMessageFromPeer, peerId = " + peerId + ", message = " + message);
 
-                if (_peerId != peerId && _peerId != -1)
+                string peerName = null;
+                foreach (var kv in _onlinePeers)
                 {
-                    Debug.WriteLine("[Error] Conductor: Received a message from unknown peer while already in a conversation with a different peer.");
-                    return;
+                    if (kv.Value.Id == peerId)
+                    {
+                        peerName = kv.Key;
+                        break;
+                    }
                 }
 
+                Debug.Assert(peerName != null);
+                
+                Debug.Assert(message.Length > 0);
+                
                 if (!JsonObject.TryParse(message, out JsonObject jMessage))
                 {
                     Debug.WriteLine("[Error] Conductor: Received unknown message." + message);
@@ -1144,7 +1212,7 @@ namespace HoloPoseClient.Signalling
 #if ORTCLIB
                 bool created = false;
 #endif
-                if (_peerConnection == null)
+                if (!_peerConnections.ContainsKey(peerName))
                 {
                     if (!IsNullOrEmpty(type))
                     {
@@ -1154,17 +1222,17 @@ namespace HoloPoseClient.Signalling
                         // of old (but not yet fully closed) connections.
                         if (type == "offer" || type == "answer" || type == "json")
                         {
-                            Debug.Assert(_peerId == -1);
-                            _peerId = peerId;
+                            Debug.Assert(!_connectedPeerIds.ContainsKey(peerName));
 
-                            IEnumerable<Peer> enumerablePeer = _peers.Where(x => x.Id == peerId);
-                            _peer = enumerablePeer.First();
+                            _connectedPeerIds[peerName] = peerId;
+
+                            _connectedPeers[peerName] = _onlinePeers[peerName];
 #if ORTCLIB
                             created = true;
                             _signalingMode = Helper.SignalingModeForClientName(Peer.Name);
 #endif
                             _connectToPeerCancelationTokenSource = new CancellationTokenSource();
-                            _connectToPeerTask = CreatePeerConnection(_connectToPeerCancelationTokenSource.Token);
+                            _connectToPeerTask = CreatePeerConnection(peerName, _connectToPeerCancelationTokenSource.Token);
                             bool connectResult = await _connectToPeerTask;
                             _connectToPeerTask = null;
                             _connectToPeerCancelationTokenSource.Dispose();
@@ -1172,11 +1240,6 @@ namespace HoloPoseClient.Signalling
                             {
                                 Debug.WriteLine("[Error] Conductor: Failed to initialize our PeerConnection instance");
                                 await Signaller.SignOut();
-                                return;
-                            }
-                            else if (_peerId != peerId)
-                            {
-                                Debug.WriteLine("[Error] Conductor: Received a message from unknown peer while already in a conversation with a different peer.");
                                 return;
                             }
                         }
@@ -1187,8 +1250,8 @@ namespace HoloPoseClient.Signalling
                         return;
                     }
                 }
-
-                if (_peerConnection != null && !IsNullOrEmpty(type))
+                
+                if (_peerConnections.ContainsKey(peerName) && !IsNullOrEmpty(type))
                 {
                     if (type == "offer-loopback")
                     {
@@ -1236,7 +1299,7 @@ namespace HoloPoseClient.Signalling
                     }
 #endif
                     Debug.WriteLine("Conductor: Received session description: " + message);
-                    await _peerConnection.SetRemoteDescription(new RTCSessionDescription(messageType, sdp));
+                    await _peerConnections[peerName].SetRemoteDescription(new RTCSessionDescription(messageType, sdp));
 
 #if ORTCLIB
                     if ((messageType == RTCSessionDescriptionSignalingType.SdpOffer) ||
@@ -1245,10 +1308,10 @@ namespace HoloPoseClient.Signalling
                     if (messageType == RTCSdpType.Offer)
 #endif
                     {
-                        var answer = await _peerConnection.CreateAnswer();
-                        await _peerConnection.SetLocalDescription(answer);
+                        var answer = await _peerConnections[peerName].CreateAnswer();
+                        await _peerConnections[peerName].SetLocalDescription(answer);
                         // Send answer
-                        SendSdp(answer);
+                        SendSdp(peerName, answer);
 #if ORTCLIB
                         OrtcStatsManager.Instance.StartCallWatch(SessionId, false);
 #endif
@@ -1289,7 +1352,7 @@ namespace HoloPoseClient.Signalling
                     }
                     _peerConnection?.AddIceCandidate(candidate);
 #else
-                    await _peerConnection.AddIceCandidate(candidate);
+                    await _peerConnections[peerName].AddIceCandidate(candidate);
 #endif
 
 
@@ -1298,12 +1361,20 @@ namespace HoloPoseClient.Signalling
             }).Wait();
         }
 
+        public void CloseAllPeerConnections()
+        {
+            foreach (var kv in _peerConnections)
+            {
+                ClosePeerConnection(kv.Key);
+            }
+        }
+
         /// <summary>
         /// Handler for Signaller's OnDisconnected event handler.
         /// </summary>
         private void Signaller_OnDisconnected()
         {
-            ClosePeerConnection();
+            CloseAllPeerConnections();
         }
 
         /// <summary>
@@ -1329,7 +1400,7 @@ namespace HoloPoseClient.Signalling
             if (_signaller.IsConnected())
             {
                 await _signaller.SignOut();
-                _peers.Clear();
+                _onlinePeers.Clear();
             }
         }
 
@@ -1340,25 +1411,23 @@ namespace HoloPoseClient.Signalling
         public async void ConnectToPeer(Peer peer)
         {
             Debug.Assert(peer != null);
-            Debug.Assert(_peerId == -1);
 
-            if (_peerConnection != null)
-            {
-                Debug.WriteLine("[Error] Conductor: We only support connecting to one peer at a time");
-                return;
-            }
+            string peerName = peer.Name;
+
+            Debug.Assert(!_connectedPeerIds.ContainsKey(peerName));
+            
 #if ORTCLIB
             _signalingMode = Helper.SignalingModeForClientName(peer.Name);
 #endif
             _connectToPeerCancelationTokenSource = new System.Threading.CancellationTokenSource();
-            _connectToPeerTask = CreatePeerConnection(_connectToPeerCancelationTokenSource.Token);
+            _connectToPeerTask = CreatePeerConnection(peerName, _connectToPeerCancelationTokenSource.Token);
             bool connectResult = await _connectToPeerTask;
             _connectToPeerTask = null;
             _connectToPeerCancelationTokenSource.Dispose();
             if (connectResult)
             {
-                _peerId = peer.Id;
-                var offer = await _peerConnection.CreateOffer();
+                _connectedPeerIds[peerName] = peer.Id;
+                var offer = await _peerConnections[peerName].CreateOffer();
 #if !ORTCLIB
                 // Alter sdp to force usage of selected codecs
                 string newSdp = offer.Sdp;
@@ -1367,9 +1436,9 @@ namespace HoloPoseClient.Signalling
                     new Org.WebRtc.CodecInfo(VideoCodec.ClockRate, VideoCodec.Name));
                 offer.Sdp = newSdp;
 #endif
-                await _peerConnection.SetLocalDescription(offer);
+                await _peerConnections[peerName].SetLocalDescription(offer);
                 Debug.WriteLine("Conductor: Sending offer.");
-                SendSdp(offer);
+                SendSdp(peerName, offer);
 #if ORTCLIB
                 OrtcStatsManager.Instance.StartCallWatch(SessionId, true);
 #endif
@@ -1379,10 +1448,10 @@ namespace HoloPoseClient.Signalling
         /// <summary>
         /// Calls to disconnect from peer.
         /// </summary>
-        public async Task DisconnectFromPeer()
+        public async Task DisconnectFromPeer(string peerName)
         {
-            await SendHangupMessage();
-            ClosePeerConnection();
+            await SendHangupMessage(peerName);
+            ClosePeerConnection(peerName);
         }
 
         /// <summary>
@@ -1403,7 +1472,7 @@ namespace HoloPoseClient.Signalling
         /// Sends SDP message.
         /// </summary>
         /// <param name="description">RTC session description.</param>
-        private void SendSdp(RTCSessionDescription description)
+        private void SendSdp(string peerName, RTCSessionDescription description)
         {
             JsonObject json = null;
 #if ORTCLIB
@@ -1455,25 +1524,29 @@ namespace HoloPoseClient.Signalling
                 { kSessionDescriptionSdpName, JsonValue.CreateStringValue(description.Sdp) }
             };
 #endif
-            SendMessage(json);
+            SendMessage(peerName, json);
         }
 
         /// <summary>
         /// Helper method to send a message to a peer.
         /// </summary>
         /// <param name="json">Message body.</param>
-        public void SendMessage(IJsonValue json)
+        public void SendMessage(string peerName, IJsonValue json)
         {
+            int peerId = _connectedPeerIds[peerName];
+
             // Don't await, send it async.
-            var task = _signaller.SendToPeer(_peerId, json);
+            var task = _signaller.SendToPeer(peerId, json);
         }
 
         /// <summary>
         /// Helper method to send a hangup message to a peer.
         /// </summary>
-        private async Task SendHangupMessage()
+        private async Task SendHangupMessage(string peerName)
         {
-            await _signaller.SendToPeer(_peerId, "BYE");
+            int peerId = _connectedPeerIds[peerName];
+
+            await _signaller.SendToPeer(peerId, "BYE");
         }
 
         /// <summary>

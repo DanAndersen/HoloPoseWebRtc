@@ -2289,7 +2289,8 @@ MonoBehaviour:
   RemoteTextureWidth: 640
   RemoteTextureHeight: 480
   LocalVideoImage: {fileID: 0}
-  RemoteVideoImage: {fileID: 1195077296}
+  RemoteVideoImages:
+  - {fileID: 1195077296}
   ServerAddressInputField: {fileID: 1655265756}
   ServerPortInputField: {fileID: 575191120}
   ClientNameInputField: {fileID: 1023347939}

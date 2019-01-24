@@ -25,16 +25,16 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MediaEngineUWP", "..\..\Med
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "WebRtcScheme", "..\..\MediaEnginePlayerPlugin\WebRtcScheme\WebRtcScheme.vcxproj", "{95599595-F926-408D-8F55-00E23D30B605}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Org.WebRtc.Uwp", "..\..\..\andersed\ortclib-sdk\webrtc\windows\projects\msvc\Org.WebRtc.Uwp\Org.WebRtc.Uwp.vcxproj", "{32A4ABD8-EB1C-4198-B261-425E6CADDBEF}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Org.WebRtc.Uwp", "..\..\..\ortclib-sdk\webrtc\windows\projects\msvc\Org.WebRtc.Uwp\Org.WebRtc.Uwp.vcxproj", "{32A4ABD8-EB1C-4198-B261-425E6CADDBEF}"
 	ProjectSection(ProjectDependencies) = postProject
 		{08C8FB57-A433-44AD-AE99-4AF554F02BED} = {08C8FB57-A433-44AD-AE99-4AF554F02BED}
 	EndProjectSection
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "WebRtc.Stats.Observer", "..\..\..\andersed\ortclib-sdk\webrtc\windows\projects\msvc\WebRtc.Stats.Observer.Universal\WebRtc.Stats.Observer.vcxproj", "{8F6CC751-235C-50C4-5D46-F577A04AADF2}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "WebRtc.Stats.Observer", "..\..\..\ortclib-sdk\webrtc\windows\projects\msvc\WebRtc.Stats.Observer.Universal\WebRtc.Stats.Observer.vcxproj", "{8F6CC751-235C-50C4-5D46-F577A04AADF2}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Utility", "Utility", "{EF504EBC-AE1E-44B2-A3B4-C7AFCE43052B}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "WebRtc.UWP.Native.Builder", "..\..\..\andersed\ortclib-sdk\webrtc\windows\projects\msvc\WebRtc.UWP.Native.Builder\WebRtc.UWP.Native.Builder.vcxproj", "{08C8FB57-A433-44AD-AE99-4AF554F02BED}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "WebRtc.UWP.Native.Builder", "..\..\..\ortclib-sdk\webrtc\windows\projects\msvc\WebRtc.UWP.Native.Builder\WebRtc.UWP.Native.Builder.vcxproj", "{08C8FB57-A433-44AD-AE99-4AF554F02BED}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PeerConnectionClient.WebRtc", "..\..\ClientDesktop\PeerConnectionClient.WebRtc.csproj", "{A2EA7350-EE59-42C5-9323-C942B058B217}"
 EndProject

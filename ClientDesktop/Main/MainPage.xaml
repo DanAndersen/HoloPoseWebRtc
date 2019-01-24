@@ -166,14 +166,33 @@
                                     RelativePanel.AlignRightWithPanel="True"
                                     RelativePanel.AlignBottomWithPanel="True"
                                     RelativePanel.AlignTopWithPanel="True"/>
-                    <MediaElement 
-                        Name="PeerVideo"
-                        RealTimePlayback="True"
+
+                    <Grid 
                         RelativePanel.AlignLeftWithPanel="True"
                         RelativePanel.AlignRightWithPanel="True"
                         RelativePanel.AlignBottomWithPanel="True"
-                        RelativePanel.AlignTopWithPanel="True"
+                        RelativePanel.AlignTopWithPanel="True">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <MediaElement Grid.Row="0" Grid.Column="0"
+                        Name="PeerVideo"
+                        RealTimePlayback="True"
                         MediaFailed="PeerVideo_MediaFailed"/>
+
+                        <MediaElement Grid.Row="0" Grid.Column="1"
+                        Name="PeerVideo2"
+                        RealTimePlayback="True"
+                        MediaFailed="PeerVideo_MediaFailed"/>
+                    </Grid>
+                    
+                    
+
                     <Border Width="38" Background="White">
                         <StackPanel VerticalAlignment="Bottom"
                                     Visibility="{Binding IsConnectedToPeer, Converter={StaticResource BoolToVisConverter}}"
