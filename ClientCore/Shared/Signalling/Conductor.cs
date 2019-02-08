@@ -592,8 +592,8 @@ namespace HoloPoseClient.Signalling
         public event Action OnAddLocalStream;
 
         // Public events to notify about connection status
-        public event Action OnPeerConnectionCreated;
-        public event Action OnPeerConnectionClosed;
+        public event Action<string> OnPeerConnectionCreated;
+        public event Action<string> OnPeerConnectionClosed;
         public event Action OnReadyToConnect;
 
         /// <summary>
@@ -711,7 +711,7 @@ namespace HoloPoseClient.Signalling
 #if ORTCLIB
             OrtcStatsManager.Instance.Initialize(_peerConnection);
 #endif
-            OnPeerConnectionCreated?.Invoke();
+            OnPeerConnectionCreated?.Invoke(peerName);
 
             _peerConnections[peerName].OnIceCandidate += (RTCPeerConnectionIceEvent evt) =>
             {
@@ -882,7 +882,7 @@ namespace HoloPoseClient.Signalling
                     _peerVideoTracks.Remove(peerName);
                     _selfVideoTrack = null;
 
-                    OnPeerConnectionClosed?.Invoke();
+                    OnPeerConnectionClosed?.Invoke(peerName);
 
                     peerConnection.Close(); // Slow, so do this after UI updated and camera turned off
 
@@ -1166,7 +1166,7 @@ namespace HoloPoseClient.Signalling
         {
         }
 
-        public event Action<string> IncomingRawMessage;
+        public event Action<string, string> IncomingRawMessage;
 
         /// <summary>
         /// Handler for Signaller's OnMessageFromPeer event.
@@ -1205,7 +1205,7 @@ namespace HoloPoseClient.Signalling
                 if (!IsNullOrEmpty(type) && type == "message")
                 {
                     JsonObject rawMessage = jMessage.GetNamedObject("message");
-                    IncomingRawMessage?.Invoke(rawMessage.ToString());
+                    IncomingRawMessage?.Invoke(peerName, rawMessage.ToString());
                     return;
                 }
                 

@@ -1595,7 +1595,7 @@ GameObject:
   - component: {fileID: 1195077297}
   - component: {fileID: 1195077296}
   m_Layer: 5
-  m_Name: RemoteVideoSurface
+  m_Name: RemoteVideoSurface_StarTrainee
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1616,8 +1616,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -54, y: 167}
-  m_SizeDelta: {x: 320, y: 240}
+  m_AnchoredPosition: {x: -111, y: 167}
+  m_SizeDelta: {x: 160, y: 120}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1195077296
 MonoBehaviour:
@@ -1997,6 +1997,7 @@ RectTransform:
   - {fileID: 1195077295}
   - {fileID: 1538956643}
   - {fileID: 1618383192}
+  - {fileID: 1586066057}
   m_Father: {fileID: 0}
   m_RootOrder: 1
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -2288,9 +2289,9 @@ MonoBehaviour:
   LocalTextureHeight: 120
   RemoteTextureWidth: 640
   RemoteTextureHeight: 480
-  LocalVideoImage: {fileID: 0}
-  RemoteVideoImages:
-  - {fileID: 1195077296}
+  LocalVideoImage_StarMentor: {fileID: 0}
+  RemoteVideoImage_StarTrainee: {fileID: 1195077296}
+  RemoteVideoImage_StarTrainee2: {fileID: 1586066058}
   ServerAddressInputField: {fileID: 1655265756}
   ServerPortInputField: {fileID: 575191120}
   ClientNameInputField: {fileID: 1023347939}
@@ -2304,6 +2305,73 @@ MonoBehaviour:
   LastSelfPoseLabel: {fileID: 0}
   TextItemPrefab: {fileID: 1848430289707114, guid: 4fee78ef3f2d7ea4abe51fd64b984c87,
     type: 2}
+--- !u!1 &1586066056
+GameObject:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  serializedVersion: 5
+  m_Component:
+  - component: {fileID: 1586066057}
+  - component: {fileID: 1586066059}
+  - component: {fileID: 1586066058}
+  m_Layer: 5
+  m_Name: RemoteVideoSurface_StarTrainee2
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &1586066057
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 1586066056}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 3.000021}
+  m_LocalScale: {x: 0.99999994, y: 0.99999994, z: 0.99999994}
+  m_Children: []
+  m_Father: {fileID: 1251060747}
+  m_RootOrder: 3
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0.5, y: 0.5}
+  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchoredPosition: {x: 89, y: 167.00002}
+  m_SizeDelta: {x: 160, y: 120}
+  m_Pivot: {x: 0.5, y: 0.5}
+--- !u!114 &1586066058
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 1586066056}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: -98529514, guid: f5f67c52d1564df4a8936ccd202a3bd8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_Material: {fileID: 2100000, guid: 2dcb6070b364c4340b3e0b4713ed1e98, type: 2}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_RaycastTarget: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+    m_TypeName: UnityEngine.UI.MaskableGraphic+CullStateChangedEvent, UnityEngine.UI,
+      Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+  m_Texture: {fileID: 0}
+  m_UVRect:
+    serializedVersion: 2
+    x: 0
+    y: 0
+    width: 1
+    height: 1
+--- !u!222 &1586066059
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 1586066056}
 --- !u!1 &1593037223
 GameObject:
   m_ObjectHideFlags: 0

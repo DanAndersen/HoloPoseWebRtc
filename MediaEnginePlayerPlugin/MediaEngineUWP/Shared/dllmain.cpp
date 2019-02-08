@@ -26,9 +26,7 @@ static UnityGfxRenderer s_DeviceType = kUnityGfxRenderernullptr;
 static IUnityInterfaces* s_UnityInterfaces = nullptr;
 static IUnityGraphics* s_Graphics = nullptr;
 
-static std::map<std::string, MEPlayer^> s_playerMap;
-const static std::string LabelLocalPlayer = "LocalPlayer";
-const static std::string LabelRemotePlayer = "RemotePlayer";
+static std::map<UINT32, MEPlayer^> s_playerMap;
 
 static Microsoft::WRL::ComPtr<ABI::Windows::Media::IMediaExtensionManager> s_mediaExtensionManager;
 static Microsoft::WRL::ComPtr<ABI::Windows::Foundation::Collections::IMap<HSTRING, IInspectable*>> s_extensionManagerProperties;
@@ -100,37 +98,28 @@ STDAPI DllCanUnloadNow()
     return module.GetObjectCount() == 0 ? S_OK : S_FALSE;
 }
 
-extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API CreateLocalMediaPlayback()
+extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API CreateMediaPlayback(_In_ UINT32 id)
 {
-	Log(Log_Level_Info, L"CMediaEnginePlayer::CreateLocalMediaPlayback()");
+	Log(Log_Level_Info, L"CMediaEnginePlayer::CreateMediaPlayback()");
 
 	if (nullptr == s_UnityInterfaces)
 		return;
 
 	if (s_DeviceType == kUnityGfxRendererD3D11)
 	{
+		wchar_t texLabelBuffer[100];
+		int cx = swprintf(texLabelBuffer, 100, L"SharedTextureHandle_%d", id);
+
+		String^ texLabel = ref new String(texLabelBuffer);
+
 		IUnityGraphicsD3D11* d3d = s_UnityInterfaces->Get<IUnityGraphicsD3D11>();
-		s_playerMap[LabelLocalPlayer] = ref new MEPlayer(d3d->GetDevice(), L"SharedLocalTextureHandle", s_extensionManagerProperties);
+		s_playerMap[id] = ref new MEPlayer(d3d->GetDevice(), texLabel, s_extensionManagerProperties);
 	}
 }
 
-extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API CreateRemoteMediaPlayback()
+extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API ReleaseMediaPlayback(_In_ UINT32 id)
 {
-	Log(Log_Level_Info, L"CMediaEnginePlayer::CreateRemoteMediaPlayback()");
-
-	if (nullptr == s_UnityInterfaces)
-		return;
-
-	if (s_DeviceType == kUnityGfxRendererD3D11)
-	{
-		IUnityGraphicsD3D11* d3d = s_UnityInterfaces->Get<IUnityGraphicsD3D11>();
-		s_playerMap[LabelRemotePlayer] = ref new MEPlayer(d3d->GetDevice(), L"SharedRemoteTextureHandle", s_extensionManagerProperties);
-	}
-}
-
-extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API ReleaseLocalMediaPlayback()
-{
-	auto key = LabelLocalPlayer;
+	auto key = id;
 
 	auto it = s_playerMap.find(key);
 	if (it != s_playerMap.end()) {
@@ -144,25 +133,9 @@ extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API ReleaseLocalMediaPlay
 	}
 }
 
-extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API ReleaseRemoteMediaPlayback()
+extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API GetPrimaryTexture(_In_ UINT32 id, _In_ UINT32 width, _In_ UINT32 height, _COM_Outptr_ void** playbackSRV)
 {
-	auto key = LabelRemotePlayer;
-
-	auto it = s_playerMap.find(key);
-	if (it != s_playerMap.end()) {
-		auto & player = it->second;
-		if (player != nullptr) {
-			player->Pause();
-			player->Shutdown();
-			player = nullptr;
-		}
-		s_playerMap[key] = nullptr;
-	}
-}
-
-extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API GetLocalPrimaryTexture(_In_ UINT32 width, _In_ UINT32 height, _COM_Outptr_ void** playbackSRV)
-{
-	auto key = LabelLocalPlayer;
+	auto key = id;
 
 	auto it = s_playerMap.find(key);
 	if (it != s_playerMap.end()) {
@@ -173,22 +146,9 @@ extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API GetLocalPrimaryTextur
 	}
 }
 
-extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API GetRemotePrimaryTexture(_In_ UINT32 width, _In_ UINT32 height, _COM_Outptr_ void** playbackSRV)
+extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API LoadMediaStreamSource(_In_ UINT32 id, Windows::Media::Core::IMediaStreamSource^ mediaSourceHandle)
 {
-	auto key = LabelRemotePlayer;
-
-	auto it = s_playerMap.find(key);
-	if (it != s_playerMap.end()) {
-		auto & player = it->second;
-		if (player != nullptr) {
-			player->GetPrimaryTexture(width, height, playbackSRV);
-		}
-	}
-}
-
-extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API LoadLocalMediaStreamSource(Windows::Media::Core::IMediaStreamSource^ mediaSourceHandle)
-{
-	auto key = LabelLocalPlayer;
+	auto key = id;
 
 	if (mediaSourceHandle != nullptr) {
 		auto it = s_playerMap.find(key);
@@ -201,9 +161,9 @@ extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API LoadLocalMediaStreamS
 	}
 }
 
-extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API UnloadLocalMediaStreamSource()
+extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API UnloadMediaStreamSource(_In_ UINT32 id)
 {
-	auto key = LabelLocalPlayer;
+	auto key = id;
 
 	auto it = s_playerMap.find(key);
 	if (it != s_playerMap.end()) {
@@ -214,37 +174,9 @@ extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API UnloadLocalMediaStrea
 	}
 }
 
-extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API LoadRemoteMediaStreamSource(Windows::Media::Core::IMediaStreamSource^ mediaSourceHandle)
+extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API Play(_In_ UINT32 id)
 {
-	auto key = LabelRemotePlayer;
-
-	if (mediaSourceHandle != nullptr) {
-		auto it = s_playerMap.find(key);
-		if (it != s_playerMap.end()) {
-			auto & player = it->second;
-			if (player != nullptr) {
-				player->SetMediaStreamSource(mediaSourceHandle);
-			}
-		}
-	}
-}
-
-extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API UnloadRemoteMediaStreamSource()
-{
-	auto key = LabelRemotePlayer;
-
-	auto it = s_playerMap.find(key);
-	if (it != s_playerMap.end()) {
-		auto & player = it->second;
-		if (player != nullptr) {
-			player->SetMediaStreamSource(nullptr);
-		}
-	}
-}
-
-extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API LocalPlay()
-{
-	auto key = LabelLocalPlayer;
+	auto key = id;
 
 	auto it = s_playerMap.find(key);
 	if (it != s_playerMap.end()) {
@@ -255,35 +187,9 @@ extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API LocalPlay()
 	}
 }
 
-extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API RemotePlay()
+extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API Pause(_In_ UINT32 id)
 {
-	auto key = LabelRemotePlayer;
-
-	auto it = s_playerMap.find(key);
-	if (it != s_playerMap.end()) {
-		auto & player = it->second;
-		if (player != nullptr) {
-			player->Play();
-		}
-	}
-}
-
-extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API LocalPause()
-{
-	auto key = LabelLocalPlayer;
-
-	auto it = s_playerMap.find(key);
-	if (it != s_playerMap.end()) {
-		auto & player = it->second;
-		if (player != nullptr) {
-			player->Pause();
-		}
-	}
-}
-
-extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API RemotePause()
-{
-	auto key = LabelRemotePlayer;
+	auto key = id;
 
 	auto it = s_playerMap.find(key);
 	if (it != s_playerMap.end()) {

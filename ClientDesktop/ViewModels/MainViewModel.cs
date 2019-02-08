@@ -358,7 +358,7 @@ namespace PeerConnectionClient.ViewModels
             //PlotlyManager.UpdateUploadingStatsState += PlotlyManager_OnUpdatedUploadingStatsState;
             //PlotlyManager.OnError += PlotlyManager_OnError;
             // Connected to a peer event handler
-            Conductor.Instance.OnPeerConnectionCreated += () =>
+            Conductor.Instance.OnPeerConnectionCreated += (peerName) =>
             {
                 RunOnUiThread(() =>
                 {
@@ -390,7 +390,7 @@ namespace PeerConnectionClient.ViewModels
             };
 
             // Connection between the current user and a peer is closed event handler
-            Conductor.Instance.OnPeerConnectionClosed += () =>
+            Conductor.Instance.OnPeerConnectionClosed += (peerName) =>
             {
                 RunOnUiThread(() =>
                 {
