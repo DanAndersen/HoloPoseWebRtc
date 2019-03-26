@@ -22,6 +22,10 @@ using Newtonsoft.Json.Linq;
 
 public class ControlScript : MonoBehaviour
 {
+    private const string StarTraineeName = "star-trainee";
+    private const string StarMentorName = "star-mentor";
+
+
     public string ServerAddress = "https://purduestarproj-webrtc-signal.herokuapp.com";
     public string ServerPort = "443";
     public string ClientName = "star-trainee"; // star-trainee, star-mentor, etc
@@ -45,6 +49,15 @@ public class ControlScript : MonoBehaviour
 
     public RawImage LocalVideoImage;
     public RawImage RemoteVideoImage;
+
+
+    
+
+    private string LocalName = StarTraineeName;
+
+    public Dictionary<string, uint> SourceIDs = new Dictionary<string, uint> { { StarMentorName, 0 }, { StarTraineeName, 1 } };
+
+
 
     public InputField ServerAddressInputField;
     public InputField ServerPortInputField;
@@ -167,46 +180,51 @@ public class ControlScript : MonoBehaviour
         ClientNameInputField.text = ClientName;
     }
 
+    private void InitMediaTexture(uint id, RawImage videoImage, uint width, uint height)
+    {
+        Plugin.CreateMediaPlayback(id);
+        IntPtr nativeTex = IntPtr.Zero;
+        Plugin.GetPrimaryTexture(id, width, height, out nativeTex);
+        var primaryPlaybackTexture = Texture2D.CreateExternalTexture((int)width, (int)height, TextureFormat.BGRA32, false, false, nativeTex);
+        if (videoImage != null)
+        {
+            videoImage.texture = primaryPlaybackTexture;
+        }
+    }
+
     private void OnEnable()
     {
         if (LocalStreamEnabled)
         {
-            Plugin.CreateLocalMediaPlayback();
-            IntPtr nativeTex = IntPtr.Zero;
-            Plugin.GetLocalPrimaryTexture(LocalTextureWidth, LocalTextureHeight, out nativeTex);
-            var primaryPlaybackTexture = Texture2D.CreateExternalTexture((int)LocalTextureWidth, (int)LocalTextureHeight, TextureFormat.BGRA32, false, false, nativeTex);
-            if (LocalVideoImage != null)
-            {
-                LocalVideoImage.texture = primaryPlaybackTexture;
-            }
+            InitMediaTexture(SourceIDs[StarTraineeName], LocalVideoImage, LocalTextureWidth, LocalTextureHeight);
         }
 
         if (RemoteVideoImage != null)
         {
-            Plugin.CreateRemoteMediaPlayback();
-            IntPtr nativeTex = IntPtr.Zero;
-            Plugin.GetRemotePrimaryTexture(RemoteTextureWidth, RemoteTextureHeight, out nativeTex);
-            var primaryPlaybackTexture = Texture2D.CreateExternalTexture((int)RemoteTextureWidth, (int)RemoteTextureHeight, TextureFormat.BGRA32, false, false, nativeTex);
-            RemoteVideoImage.texture = primaryPlaybackTexture;
+            InitMediaTexture(SourceIDs[StarMentorName], RemoteVideoImage, RemoteTextureWidth, RemoteTextureHeight);
         }
+    }
+
+    private void TeardownMediaTexture(uint id, RawImage videoImage)
+    {
+        if (videoImage != null)
+        {
+            videoImage.texture = null;
+        }
+        Plugin.ReleaseMediaPlayback(id);
     }
 
     private void OnDisable()
     {
         if (LocalStreamEnabled)
         {
-            if (LocalVideoImage != null)
-            {
-                LocalVideoImage.texture = null;
-            }
-            Plugin.ReleaseLocalMediaPlayback();
+            TeardownMediaTexture(SourceIDs[StarTraineeName], LocalVideoImage);
         }
 
         if (RemoteVideoImage != null)
         {
-            RemoteVideoImage.texture = null;
+            TeardownMediaTexture(SourceIDs[StarMentorName], RemoteVideoImage);
         }
-        Plugin.ReleaseRemoteMediaPlayback();
     }
 
     private void AddRemotePeer(string peerName)
@@ -397,10 +415,12 @@ public class ControlScript : MonoBehaviour
 
     // fired whenever we get a video frame from the remote peer.
     // if there is pose data, posXYZ and rotXYZW will have non-zero values.
-    private void Conductor_OnPeerRawFrame(uint width, uint height,
+    private void Conductor_OnPeerRawFrame(string peerName, uint width, uint height,
             byte[] yPlane, uint yPitch, byte[] vPlane, uint vPitch, byte[] uPlane, uint uPitch,
             float posX, float posY, float posZ, float rotX, float rotY, float rotZ, float rotW)
     {
+        // TODO: use the peerName to determine which video source this is coming from
+
         UnityEngine.WSA.Application.InvokeOnAppThread(() =>
         {
             //Set property on UI thread
@@ -431,11 +451,11 @@ public class ControlScript : MonoBehaviour
         }, false);
     }
 
-    private void Conductor_IncomingRawMessage(string rawMessageString)
+    private void Conductor_IncomingRawMessage(string peerName, string rawMessageString)
     {
         UnityEngine.WSA.Application.InvokeOnAppThread(() =>
         {
-            Debug.Log("incoming raw message from peer: " + rawMessageString);
+            Debug.Log("incoming raw message from peer " + peerName + ": " + rawMessageString);
 
             if (LastReceivedMessageLabel != null)
             {
@@ -511,8 +531,12 @@ public class ControlScript : MonoBehaviour
                 string jsonString = messageContainer.ToString();
 
                 Debug.Log("sending test message " + jsonString);
+
+                string dummyMessageRecipient = "star-mentor";
+
+                Debug.Log("TODO: test message being sent just to '" + dummyMessageRecipient + "' (hardcoded)");
 #if !UNITY_EDITOR
-                Conductor.Instance.SendMessage(Windows.Data.Json.JsonObject.Parse(jsonString));
+                Conductor.Instance.SendMessage(dummyMessageRecipient, Windows.Data.Json.JsonObject.Parse(jsonString));
 #endif
             }
             else
@@ -564,9 +588,16 @@ public class ControlScript : MonoBehaviour
             }
             else if (status == Status.InCall)
             {
+                if (selectedPeerIndex == -1)
+                    return;
+
+                Debug.Log("selectedPeerIndex: " + selectedPeerIndex);
+                string selectedRemotePeerName = PeerContent.GetChild(selectedPeerIndex).GetComponent<Text>().text;
+                Debug.Log("selectedRemotePeerName: " + selectedRemotePeerName);
+
                 new Task(() =>
                 {
-                    var task = Conductor.Instance.DisconnectFromPeer();
+                    var task = Conductor.Instance.DisconnectFromPeer(selectedRemotePeerName);
                 }).Start();
                 status = Status.EndingCall;
             }
@@ -580,6 +611,7 @@ public class ControlScript : MonoBehaviour
 
     public void OnRemotePeerItemClick(PointerEventData data)
     {
+
         for (int i = 0; i < PeerContent.transform.childCount; i++)
         {
             if (PeerContent.GetChild(i) == data.selectedObject.transform)
@@ -599,7 +631,16 @@ public class ControlScript : MonoBehaviour
     {
         Conductor.Instance.CancelConnectingToPeer();
 
-        await Conductor.Instance.DisconnectFromPeer();
+        var conductorPeers = Conductor.Instance.GetPeers();
+        foreach (var conductorPeer in conductorPeers) 
+        {
+            if (conductorPeer.Name != LocalName) 
+            {
+                await Conductor.Instance.DisconnectFromPeer(conductorPeer.Name);
+            }
+        }
+
+        
         await Conductor.Instance.DisconnectFromServer();
 
         Conductor.Instance.OnAppSuspending();
@@ -711,7 +752,7 @@ public class ControlScript : MonoBehaviour
         Conductor.Instance.OnAddLocalStream += Conductor_OnAddLocalStream;
 
         // Connected to a peer event handler
-        Conductor.Instance.OnPeerConnectionCreated += () =>
+        Conductor.Instance.OnPeerConnectionCreated += (peerName) =>
         {
             var task = RunOnUiThread(() =>
             {
@@ -736,23 +777,26 @@ public class ControlScript : MonoBehaviour
         };
 
         // Connection between the current user and a peer is closed event handler
-        Conductor.Instance.OnPeerConnectionClosed += () =>
+        Conductor.Instance.OnPeerConnectionClosed += (remotePeerName) =>
         {
+            var localId = SourceIDs[LocalName];
+            var remoteId = SourceIDs[remotePeerName];
+
             var task = RunOnUiThread(() =>
             {
                 lock (this)
                 {
                     if (status == Status.EndingCall)
                     {
-                        Plugin.UnloadLocalMediaStreamSource();
-                        Plugin.UnloadRemoteMediaStreamSource();
+                        Plugin.UnloadMediaStreamSource(localId);
+                        Plugin.UnloadMediaStreamSource(remoteId);
                         status = Status.Connected;
                         commandQueue.Add(new Command { type = CommandType.SetConnected });
                     }
                     else if (status == Status.InCall)
                     {
-                        Plugin.UnloadLocalMediaStreamSource();
-                        Plugin.UnloadRemoteMediaStreamSource();
+                        Plugin.UnloadMediaStreamSource(localId);
+                        Plugin.UnloadMediaStreamSource(remoteId);
                         status = Status.Connected;
                         commandQueue.Add(new Command { type = CommandType.SetConnected });
                     }
@@ -828,8 +872,10 @@ public class ControlScript : MonoBehaviour
 #endif
     }
 
-    private void Conductor_OnAddRemoteStream()
+    private void Conductor_OnAddRemoteStream(string remotePeerName)
     {
+        var remoteId = SourceIDs[remotePeerName];
+
 #if !UNITY_EDITOR
         var task = RunOnUiThread(() =>
         {
@@ -839,19 +885,19 @@ public class ControlScript : MonoBehaviour
                 {
                     IMediaSource source;
                     if (Conductor.Instance.VideoCodec.Name == "H264")
-                        source = Conductor.Instance.CreateRemoteMediaStreamSource("H264");
+                        source = Conductor.Instance.CreateRemoteMediaStreamSource(remotePeerName, "H264");
                     else
-                        source = Conductor.Instance.CreateRemoteMediaStreamSource("I420");
-                    Plugin.LoadRemoteMediaStreamSource((MediaStreamSource)source);
+                        source = Conductor.Instance.CreateRemoteMediaStreamSource(remotePeerName, "I420");
+                    Plugin.LoadMediaStreamSource(remoteId, (MediaStreamSource)source);
                 }
                 else if (status == Status.Connected)
                 {
                     IMediaSource source;
                     if (Conductor.Instance.VideoCodec.Name == "H264")
-                        source = Conductor.Instance.CreateRemoteMediaStreamSource("H264");
+                        source = Conductor.Instance.CreateRemoteMediaStreamSource(remotePeerName, "H264");
                     else
-                        source = Conductor.Instance.CreateRemoteMediaStreamSource("I420");
-                    Plugin.LoadRemoteMediaStreamSource((MediaStreamSource)source);
+                        source = Conductor.Instance.CreateRemoteMediaStreamSource(remotePeerName, "I420");
+                    Plugin.LoadMediaStreamSource(remoteId, (MediaStreamSource)source);
                 }
                 else
                 {
@@ -862,7 +908,7 @@ public class ControlScript : MonoBehaviour
 #endif
     }
 
-    private void Conductor_OnRemoveRemoteStream()
+    private void Conductor_OnRemoveRemoteStream(string peerName)
     {
 #if !UNITY_EDITOR
         var task = RunOnUiThread(() =>
@@ -886,6 +932,8 @@ public class ControlScript : MonoBehaviour
 
     private void Conductor_OnAddLocalStream()
     {
+        var localId = SourceIDs[LocalName];
+
 #if !UNITY_EDITOR
         var task = RunOnUiThread(() =>
         {
@@ -894,7 +942,7 @@ public class ControlScript : MonoBehaviour
                 if (status == Status.InCall)
                 {
                     var source = Conductor.Instance.CreateLocalMediaStreamSource("I420");
-                    Plugin.LoadLocalMediaStreamSource((MediaStreamSource)source);
+                    Plugin.LoadMediaStreamSource(localId, (MediaStreamSource)source);
 
                     Conductor.Instance.EnableLocalVideoStream();
                     Conductor.Instance.UnmuteMicrophone();
@@ -902,7 +950,7 @@ public class ControlScript : MonoBehaviour
                 else if (status == Status.Connected)
                 {
                     var source = Conductor.Instance.CreateLocalMediaStreamSource("I420");
-                    Plugin.LoadLocalMediaStreamSource((MediaStreamSource)source);
+                    Plugin.LoadMediaStreamSource(localId, (MediaStreamSource)source);
 
                     Conductor.Instance.EnableLocalVideoStream();
                     Conductor.Instance.UnmuteMicrophone();
@@ -918,48 +966,27 @@ public class ControlScript : MonoBehaviour
 
     private static class Plugin
     {
-        [DllImport("MediaEngineUWP", CallingConvention = CallingConvention.StdCall, EntryPoint = "CreateLocalMediaPlayback")]
-        internal static extern void CreateLocalMediaPlayback();
+        [DllImport("MediaEngineUWP", CallingConvention = CallingConvention.StdCall, EntryPoint = "CreateMediaPlayback")]
+        internal static extern void CreateMediaPlayback(UInt32 id);
 
-        [DllImport("MediaEngineUWP", CallingConvention = CallingConvention.StdCall, EntryPoint = "CreateRemoteMediaPlayback")]
-        internal static extern void CreateRemoteMediaPlayback();
+        [DllImport("MediaEngineUWP", CallingConvention = CallingConvention.StdCall, EntryPoint = "ReleaseMediaPlayback")]
+        internal static extern void ReleaseMediaPlayback(UInt32 id);
 
-        [DllImport("MediaEngineUWP", CallingConvention = CallingConvention.StdCall, EntryPoint = "ReleaseLocalMediaPlayback")]
-        internal static extern void ReleaseLocalMediaPlayback();
-
-        [DllImport("MediaEngineUWP", CallingConvention = CallingConvention.StdCall, EntryPoint = "ReleaseRemoteMediaPlayback")]
-        internal static extern void ReleaseRemoteMediaPlayback();
-
-        [DllImport("MediaEngineUWP", CallingConvention = CallingConvention.StdCall, EntryPoint = "GetLocalPrimaryTexture")]
-        internal static extern void GetLocalPrimaryTexture(UInt32 width, UInt32 height, out System.IntPtr playbackTexture);
-
-        [DllImport("MediaEngineUWP", CallingConvention = CallingConvention.StdCall, EntryPoint = "GetRemotePrimaryTexture")]
-        internal static extern void GetRemotePrimaryTexture(UInt32 width, UInt32 height, out System.IntPtr playbackTexture);
+        [DllImport("MediaEngineUWP", CallingConvention = CallingConvention.StdCall, EntryPoint = "GetPrimaryTexture")]
+        internal static extern void GetPrimaryTexture(UInt32 id, UInt32 width, UInt32 height, out System.IntPtr playbackTexture);
 
 #if !UNITY_EDITOR
-        [DllImport("MediaEngineUWP", CallingConvention = CallingConvention.StdCall, EntryPoint = "LoadLocalMediaStreamSource")]
-        internal static extern void LoadLocalMediaStreamSource(MediaStreamSource IMediaSourceHandler);
+        [DllImport("MediaEngineUWP", CallingConvention = CallingConvention.StdCall, EntryPoint = "LoadMediaStreamSource")]
+        internal static extern void LoadMediaStreamSource(UInt32 id, MediaStreamSource IMediaSourceHandler);
 
-        [DllImport("MediaEngineUWP", CallingConvention = CallingConvention.StdCall, EntryPoint = "UnloadLocalMediaStreamSource")]
-        internal static extern void UnloadLocalMediaStreamSource();
-
-        [DllImport("MediaEngineUWP", CallingConvention = CallingConvention.StdCall, EntryPoint = "LoadRemoteMediaStreamSource")]
-        internal static extern void LoadRemoteMediaStreamSource(MediaStreamSource IMediaSourceHandler);
-
-        [DllImport("MediaEngineUWP", CallingConvention = CallingConvention.StdCall, EntryPoint = "UnloadRemoteMediaStreamSource")]
-        internal static extern void UnloadRemoteMediaStreamSource();
+        [DllImport("MediaEngineUWP", CallingConvention = CallingConvention.StdCall, EntryPoint = "UnloadMediaStreamSource")]
+        internal static extern void UnloadMediaStreamSource(UInt32 id);
 #endif
 
-        [DllImport("MediaEngineUWP", CallingConvention = CallingConvention.StdCall, EntryPoint = "LocalPlay")]
-        internal static extern void LocalPlay();
+        [DllImport("MediaEngineUWP", CallingConvention = CallingConvention.StdCall, EntryPoint = "Play")]
+        internal static extern void Play(UInt32 id);
 
-        [DllImport("MediaEngineUWP", CallingConvention = CallingConvention.StdCall, EntryPoint = "RemotePlay")]
-        internal static extern void RemotePlay();
-
-        [DllImport("MediaEngineUWP", CallingConvention = CallingConvention.StdCall, EntryPoint = "LocalPause")]
-        internal static extern void LocalPause();
-
-        [DllImport("MediaEngineUWP", CallingConvention = CallingConvention.StdCall, EntryPoint = "RemotePause")]
-        internal static extern void RemotePause();
+        [DllImport("MediaEngineUWP", CallingConvention = CallingConvention.StdCall, EntryPoint = "Pause")]
+        internal static extern void Pause(UInt32 id);
     }
 }
