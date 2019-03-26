@@ -305,7 +305,7 @@ namespace SympleRtcCore
                     Messenger.Broadcast(SympleLog.LogDebug, "\tWidth: " + (int)chosenCapability.Width);
                     Messenger.Broadcast(SympleLog.LogDebug, "\tHeight: " + (int)chosenCapability.Height);
                     Messenger.Broadcast(SympleLog.LogDebug, "\tFrameRate: " + (int)chosenCapability.FrameRate);
-                    WebRTC.SetPreferredVideoCaptureFormat((int)chosenCapability.Width, (int)chosenCapability.Height, (int)chosenCapability.FrameRate);
+                    WebRTC.SetPreferredVideoCaptureFormat((int)chosenCapability.Width, (int)chosenCapability.Height, (int)chosenCapability.FrameRate, chosenCapability.MrcEnabled);
 
                     //Org.WebRtc.Media.SetDisplayOrientation(Windows.Graphics.Display.DisplayOrientations.None);
 

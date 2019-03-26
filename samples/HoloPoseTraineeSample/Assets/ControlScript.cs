@@ -864,6 +864,9 @@ public class ControlScript : MonoBehaviour
         if (selectedCapability != null)
         {
             selectedCapability.FrameRate = preferredFrameRate;
+
+            selectedCapability.MrcEnabled = true; // Set to true or false to disable the overlaying of mixed-reality content
+
             Conductor.Instance.VideoCaptureProfile = selectedCapability;
             Conductor.Instance.UpdatePreferredFrameFormat();
             System.Diagnostics.Debug.WriteLine("Selected video device capability - " + selectedCapability.Width + "x" + selectedCapability.Height + "@" + selectedCapability.FrameRate);
