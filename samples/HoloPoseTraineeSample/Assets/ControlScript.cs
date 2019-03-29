@@ -36,7 +36,6 @@ public class ControlScript : MonoBehaviour
     // if this is false:
     // - this client will not be able to initiate a call to a peer (it will accept incoming calls)
     // - this client will not offer its own media
-    // i.e.: the trainee should have LocalStreamEnabled = true, and the mentor should have LocalStreamEnabled = false
     public bool LocalStreamEnabled = true;
 
     public string PreferredVideoCodec = "VP8"; // options are "VP8" and "H264". Currently (as of 5/28/2018) we only support HoloLens pose on VP8.
@@ -140,11 +139,7 @@ public class ControlScript : MonoBehaviour
 
 
 #if !UNITY_EDITOR
-        if (LocalStreamEnabled) {
-            Debug.Log("because this is the TRAINEE app, we enable the local stream so we can send video to the mentor.");
-        } else {
-            Debug.Log("because this is the MENTOR app, we disable the local stream so we are not sending any video back to the trainee.");
-        }
+        Debug.Log("Setting LocalStreamEnabled to " + LocalStreamEnabled);
 
         Conductor.Instance.LocalStreamEnabled = LocalStreamEnabled;
 #endif
