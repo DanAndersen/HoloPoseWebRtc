@@ -53,6 +53,8 @@ public class ControlScript : MonoBehaviour
     private const string StarTrainee2Name = "star-trainee2";
 
 
+    public string RemoteNameForOfferingLocalStream = StarTraineeName;
+
     private const string LocalName = StarMentorName; // change for trainee
 
     public Dictionary<string, uint> SourceIDs = new Dictionary<string, uint> { { StarMentorName, 0 }, { StarTraineeName, 1 }, { StarTrainee2Name, 2 } };
@@ -124,6 +126,7 @@ public class ControlScript : MonoBehaviour
         Debug.Log("Setting LocalStreamEnabled to " + LocalStreamEnabled);
         
         Conductor.Instance.LocalStreamEnabled = LocalStreamEnabled;
+        Conductor.Instance.RemoteNameForOfferingLocalStream = RemoteNameForOfferingLocalStream;
 #endif
 
 #if !UNITY_EDITOR

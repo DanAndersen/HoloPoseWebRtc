@@ -169,6 +169,16 @@ namespace HoloPoseClient.Signalling
         /// </summary>
         public bool LocalStreamEnabled = true;
 
+
+        public const string OfferLocalStreamToAny = "*";
+
+        /// <summary>
+        /// When setting LocalStreamEnabled = true, the system can only offer one's own video to a single incoming peer. You can use this to specify a particular peer username to send to.
+        /// For example, if it is set to "user1234" (and LocalStreamEnabled = true), then the local video will be offered only if user1234 connects.
+        /// You can set it to OfferLocalStreamToAny and whatever user connects will be sent the local video (though only the first one might work).
+        /// </summary>
+        public string RemoteNameForOfferingLocalStream = OfferLocalStreamToAny;
+
         /// <summary>
         /// Video codec used in WebRTC session.
         /// </summary>
@@ -755,7 +765,7 @@ namespace HoloPoseClient.Signalling
                 return false;
             }
 
-            if (LocalStreamEnabled)
+            if (LocalStreamEnabled && (RemoteNameForOfferingLocalStream == OfferLocalStreamToAny || RemoteNameForOfferingLocalStream == peerName))
             {
 #if ORTCLIB
             var tracks = await _media.GetUserMedia(mediaStreamConstraints);
